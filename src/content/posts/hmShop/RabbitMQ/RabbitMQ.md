@@ -51,6 +51,17 @@ draft: false
   - [6.1 修改ACK处理方式](#61-修改ack处理方式)
   - [6.2 失败尝试机制](#62-失败尝试机制)
   - [6.3 失败处理机制](#63-失败处理机制)
+  - [6.4 业务幂等性](#64-业务幂等性)
+    - [唯一id](#唯一id)
+    - [业务判断](#业务判断)
+    - [定时任务兜底](#定时任务兜底)
+- [七、延迟消息](#七延迟消息)
+  - [死信交换机跟延迟消息](#死信交换机跟延迟消息)
+    - [死信交换机](#死信交换机)
+    - [延迟消息](#延迟消息)
+  - [DelayExchange插件](#delayexchange插件)
+    - [声明延迟交换机](#声明延迟交换机)
+    - [发送延迟消息](#发送延迟消息)
 
 # 一、认识MQ
 ## 1.1 同步调用
@@ -561,3 +572,143 @@ public MessageRecoverer republishMessageRecoverer(RabbitTemplate rabbitTemplate)
     return new RepublishMessageRecoverer(rabbitTemplate, "error.direct", "error");
 }
 ~~~
+## 6.4 业务幂等性
+在程序开发中，则是指同一个业务，执行一次或多次对业务状态的影响是一致的。例如：
+- 根据id删除数据
+- 查询数据
+- 新增数据
+
+<br>
+
+而支付下订单等就不是幂等性的，我们必须想办法保证消息处理的幂等性。这里给出两种方案：
+- 唯一消息ID
+- 业务状态判断
+
+### 唯一id
+思路就是乐观锁的思路，每次消息传递都会有一个唯一id，业务在接收消息后先判断id是否重复，在执行业务
+<br>
+而我们实现唯一id只需要开启SpringAMQP的MessageConverter自带了MessageID的功能：
+
+~~~java
+@Bean
+public MessageConverter messageConverter(){
+    // 1.定义消息转换器
+    Jackson2JsonMessageConverter jjmc = new Jackson2JsonMessageConverter();
+    // 2.配置自动创建消息id，用于识别不同消息，也可以在业务中基于ID判断是否是重复消息
+    jjmc.setCreateMessageIds(true);
+    return jjmc;
+}
+~~~
+### 业务判断
+就是在接收消息时，通过业务逻辑判断是否要进行执行，比如支付逻辑中，在接收到订单消息时，可以查询订单状态，然后再判断是否继续执行
+
+~~~java
+    @Override
+    public void markOrderPaySuccess(Long orderId) {
+        // 1.查询订单
+        Order old = getById(orderId);
+        // 2.判断订单状态
+        if (old == null || old.getStatus() != 1) {
+            // 订单不存在或者订单状态不是1，放弃处理
+            return;
+        }
+        // 3.尝试更新订单
+        Order order = new Order();
+        order.setId(orderId);
+        order.setStatus(2);
+        order.setPayTime(LocalDateTime.now());
+        updateById(order);
+    }
+~~~
+
+### 定时任务兜底
+要是万一消息无法传递，那么也就没有接下来的业务执行了，这是我们可以设置定时人物利用spring Task去执行检查订单状态
+
+# 七、延迟消息
+## 死信交换机跟延迟消息
+### 死信交换机
+当一个队列中的消息满足下列情况之一时，可以成为死信（dead letter）：
+- 消费者使用basic.reject或 basic.nack声明消费失败，并且消息的requeue参数设置为false
+- 消息是一个过期消息，超时无人消费
+- 要投递的队列消息满了，无法投递
+
+当出现死信我们就让这个队列通过**dead-letter-exchange**属性指定了一个交换机，这个交换机就是**死信交换机**
+
+### 延迟消息
+![yuanli](4.png)
+这里生产者发出的消息经过一个正常的交换机后路由到队列，并没有链接一个消费者，而是在消息过期成为死信后**传入死信交换机**，然后经过队列在给消费者，这样消费者就在设定的时间后才能收到信息，这就是延迟消息
+
+>[!TIP]
+注意的是这里两个交换机以及队列之间的绑定的key要一致，这样才能进行传递
+
+## DelayExchange插件
+帮我们简化了代码实现死信交换机以及延迟消息的功能
+<br>
+但是该插件在4.3版本及其以后都没有适配版本了
+
+基于docker部署的话，下载的插件放在mq的插件数据卷挂载的地方
+
+### 声明延迟交换机
+基于注解：
+~~~java
+@RabbitListener(bindings = @QueueBinding(
+        value = @Queue(name = "delay.queue", durable = "true"),
+        exchange = @Exchange(name = "delay.direct", delayed = "true"),
+        key = "delay"
+))
+public void listenDelayMessage(String msg){
+    log.info("接收到delay.queue的延迟消息：{}", msg);
+}
+~~~
+
+基于bean
+~~~java
+package com.itheima.consumer.config;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Slf4j
+@Configuration
+public class DelayExchangeConfig {
+
+    @Bean
+    public DirectExchange delayExchange(){
+        return ExchangeBuilder
+                .directExchange("delay.direct") // 指定交换机类型和名称
+                .delayed() // 设置delay的属性为true
+                .durable(true) // 持久化
+                .build();
+    }
+
+    @Bean
+    public Queue delayedQueue(){
+        return new Queue("delay.queue");
+    }
+    
+    @Bean
+    public Binding delayQueueBinding(){
+        return BindingBuilder.bind(delayedQueue()).to(delayExchange()).with("delay");
+    }
+}
+~~~
+### 发送延迟消息
+~~~java
+@Test
+void testPublisherDelayMessage() {
+    // 1.创建消息
+    String message = "hello, delayed message";
+    // 2.发送消息，利用消息后置处理器添加消息头
+    rabbitTemplate.convertAndSend("delay.direct", "delay", message, new MessagePostProcessor() {
+        @Override
+        public Message postProcessMessage(Message message) throws AmqpException {
+            // 添加延迟消息属性
+            message.getMessageProperties().setDelay(5000);
+            return message;
+        }
+    });
+}
+~~~
+这里需要new MessagePostProcessor才能添加延迟属性
