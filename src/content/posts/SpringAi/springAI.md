@@ -1,5 +1,5 @@
 ---
-title: 1.SpringAI
+title: SpringAI-1
 published: 2026-08-04
 updated: 2026-09-10
 description: 基本定义以及chatClient，chatmodel的使用，快速入门

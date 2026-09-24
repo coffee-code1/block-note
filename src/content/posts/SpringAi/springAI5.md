@@ -1,5 +1,5 @@
 ---
-title: 5.SpringAI
+title: SpringAI-5
 published: 2026-09-13
 updated: 2026-09-13
 description: 聊天记忆，历史存储功能

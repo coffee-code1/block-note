@@ -1,5 +1,5 @@
 ---
-title: 2.SpringAI
+title: SpringAI-2
 published: 2026-09-11
 updated: 2026-09-11
 description: Advisor  API介绍以及使用
