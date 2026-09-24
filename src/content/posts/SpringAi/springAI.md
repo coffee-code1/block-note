@@ -2,7 +2,7 @@
 title: 1.SpringAI
 published: 2026-08-04
 updated: 2026-09-10
-description: 基于SpringAI框架,将AI功能应用到java项目中
+description: 基本定义以及chatClient，chatmodel的使用，快速入门
 image: ''
 tags: [SpringAI]
 category: SpringAI
