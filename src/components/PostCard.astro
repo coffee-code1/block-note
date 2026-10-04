@@ -21,6 +21,8 @@ interface Props {
 	description: string;
 	draft: boolean;
 	style: string;
+	// 首页第一篇文章使用更大的 hero 卡片，突出主次层级
+	hero?: boolean;
 }
 const {
 	entry,
@@ -33,34 +35,42 @@ const {
 	image,
 	description,
 	style,
+	hero = false,
 } = Astro.props;
 const className = Astro.props.class;
 
 const hasCover = image !== undefined && image !== null && image !== "";
 
-const coverWidth = "28%";
+const coverWidth = hero ? "42%" : "28%";
 
 const { remarkPluginFrontmatter } = await entry.render();
 ---
-<div class:list={["card-base flex flex-col-reverse md:flex-col w-full rounded-[var(--radius-large)] overflow-hidden relative", className]} style={style}>
-    <div class:list={["pl-6 md:pl-9 pr-6 md:pr-2 pt-6 md:pt-7 pb-6 relative", {"w-full md:w-[calc(100%_-_52px_-_12px)]": !hasCover, "w-full md:w-[calc(100%_-_var(--coverWidth)_-_12px)]": hasCover}]}>
+<div class:list={["card-base flex flex-col-reverse md:flex-col w-full rounded-[var(--radius-large)] overflow-hidden relative",
+    "transition-all duration-300 hover:-translate-y-0.5 hover:ring-1 hover:ring-[oklch(0.75_0.14_var(--hue)/0.45)]",
+    "hover:shadow-[0_10px_28px_-14px_oklch(0.5_0.06_var(--hue)/0.45)] dark:hover:shadow-[0_10px_28px_-14px_rgba(0,0,0,0.65)]",
+    className]} style={style}>
+    <div class:list={[{"pl-6 md:pl-9 pr-6 md:pr-2 pt-6 md:pt-7 pb-6": !hero, "pl-6 md:pl-10 pr-6 md:pr-3 pt-6 md:pt-9 pb-7 md:pb-9": hero},
+        "relative", {"w-full md:w-[calc(100%_-_52px_-_12px)]": !hasCover, "w-full md:w-[calc(100%_-_var(--coverWidth)_-_12px)]": hasCover}]}>
         <a href={url}
-           class="transition group w-full block font-bold mb-3 text-3xl text-90
-        hover:text-[var(--primary)] dark:hover:text-[var(--primary)]
-        active:text-[var(--title-active)] dark:active:text-[var(--title-active)]
-        before:w-1 before:h-5 before:rounded-md before:bg-[var(--primary)]
-        before:absolute before:top-[35px] before:left-[18px] before:hidden md:before:block
-        ">
+           class:list={["transition group w-full block font-bold mb-3 text-90",
+        "hover:text-[var(--primary)] dark:hover:text-[var(--primary)]",
+        "active:text-[var(--title-active)] dark:active:text-[var(--title-active)]",
+        "before:w-1 before:rounded-md before:bg-[var(--primary)]",
+        "before:absolute before:left-[18px] before:hidden md:before:block",
+        hero ? "text-3xl md:text-4xl before:top-[35px] md:before:top-[52px] before:h-5 md:before:h-7" : "text-3xl before:top-[35px] before:h-5"
+        ]}>
             {title}
             <Icon class="inline text-[2rem] text-[var(--primary)] md:hidden translate-y-0.5 absolute" name="material-symbols:chevron-right-rounded" ></Icon>
             <Icon class="text-[var(--primary)] text-[2rem] transition hidden md:inline absolute translate-y-0.5 opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0" name="material-symbols:chevron-right-rounded"></Icon>
         </a>
 
         <!-- metadata -->
-        <PostMetadata published={published} updated={updated} tags={tags} category={category} hideTagsForMobile={true} hideUpdateDate={true} class="mb-4"></PostMetadata>
+        <PostMetadata published={published} updated={updated} tags={tags} category={category} hideTagsForMobile={true} hideUpdateDate={true} class:list={["mb-4", {"md:mb-5": hero}]}></PostMetadata>
 
         <!-- description -->
-        <div class:list={["transition text-75 mb-3.5 pr-4", {"line-clamp-2 md:line-clamp-1": !description}]}>
+        <div class:list={["transition text-75 mb-3.5 pr-4",
+            {"line-clamp-2 md:line-clamp-1": !description && !hero, "line-clamp-3 md:line-clamp-3": !description && hero},
+            {"md:text-[0.95rem] md:leading-7": hero}]}>
             { description || remarkPluginFrontmatter.excerpt }
         </div>
 
@@ -89,7 +99,7 @@ const { remarkPluginFrontmatter } = await entry.render();
             </Icon>
         </div>
         <ImageWrapper src={image} basePath={path.join("content/posts/", getDir(entry.id))} alt="Cover Image of the Post"
-                  class="w-full h-full">
+                  class="w-full h-full transition-transform duration-500 group-hover:scale-105">
         </ImageWrapper>
     </a>}
 

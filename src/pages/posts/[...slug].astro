@@ -108,6 +108,36 @@ const jsonLd = {
 
             {licenseConfig.enable && <License title={entry.data.title} slug={entry.slug} pubDate={entry.data.published} class="mb-6 rounded-xl license-container onload-animation"></License>}
 
+             <!-- ========== 在这里粘贴Giscus 评论代码 ========== -->
+            <div class="giscus" data-swup-ignore-script></div>
+            <script
+            src="https://giscus.app/client.js"
+            data-repo="coffee-code1/block-note"
+            data-repo-id="R_kgDOS0MuDw"
+            data-category="Announcements"
+            data-category-id="DIC_kwDOS0MuD84DG_cx"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="preferred_color_scheme"
+            data-lang="zh-CN"
+            crossorigin="anonymous"
+            async
+            ></script>
+            <!-- 同步Fuwari明暗主题切换 -->
+            <script>
+            function setGiscusTheme(theme) {
+            const iframe = document.querySelector('iframe.giscus-frame');
+            if (!iframe) return;
+            iframe.contentWindow.postMessage({ giscus: { setConfig: { theme } } }, 'https://giscus.app');
+            }
+            document.addEventListener('astro:theme-change', (e) => {
+            setGiscusTheme(e.detail.theme);
+            })
+            </script>
+            <!-- ========== Giscus代码结束 ========== -->
         </div>
     </div>
 

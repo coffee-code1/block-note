@@ -6,9 +6,11 @@ import { url } from "../../utils/url-utils";
 interface Props {
 	class?: string;
 	headings: MarkdownHeading[];
+	// floating: 桌面端右侧悬浮目录；inline: 窄屏折叠/内联目录
+	variant?: "floating" | "inline";
 }
 
-let { headings = [] } = Astro.props;
+let { headings = [], variant = "floating" } = Astro.props;
 
 let minDepth = 10;
 for (const heading of headings) {
@@ -30,11 +32,16 @@ const removeTailingHash = (text: string) => {
 let heading1Count = 1;
 
 const maxLevel = siteConfig.toc.depth;
+const visibleHeadings = headings.filter(
+	(heading) => heading.depth < minDepth + maxLevel,
+);
 ---
-{isPostsRoute &&
-<table-of-contents class:list={[className, "group"]}>
-    {headings.filter((heading) => heading.depth < minDepth + maxLevel).map((heading) =>
-            <a href={`#${heading.slug}`} class="px-2 flex gap-2 relative transition w-full min-h-9 rounded-xl
+
+{isPostsRoute && visibleHeadings.length > 0 && (
+<nav aria-label="文章目录" data-variant={variant} class:list={[className, "group", "toc-nav", "block w-full"]}>
+    <table-of-contents class="block w-full">
+        {visibleHeadings.map((heading) =>
+                <a href={`#${heading.slug}`} class="px-2 flex gap-2 relative transition w-full min-h-9 rounded-xl
         hover:bg-[var(--toc-btn-hover)] active:bg-[var(--toc-btn-active)] py-2
     ">
                 <div class:list={["transition w-5 h-5 shrink-0 rounded-lg text-xs flex items-center justify-center font-bold",
@@ -54,10 +61,11 @@ const maxLevel = siteConfig.toc.depth;
                     "text-30": heading.depth == minDepth + 2,
                 }]}>{removeTailingHash(heading.text)}</div>
             </a>
-    )}
-    <div id="active-indicator" style="opacity: 0" class:list={[{'hidden': headings.length == 0}, "-z-10 absolute bg-[var(--toc-btn-hover)] left-0 right-0 rounded-xl transition-all " +
-        "group-hover:bg-transparent border-2 border-[var(--toc-btn-hover)] group-hover:border-[var(--toc-btn-active)] border-dashed"]}></div>
-</table-of-contents>}
+        )}
+        <div class="toc-active-indicator" style="opacity: 0" class:list={["-z-10 pointer-events-none absolute bg-[var(--toc-btn-hover)] left-0 right-0 rounded-xl transition-all " +
+            "group-hover:bg-transparent border-2 border-[var(--toc-btn-hover)] group-hover:border-[var(--toc-btn-active)] border-dashed"]}></div>
+    </table-of-contents>
+</nav>)}
 
 <script>
 class TableOfContents extends HTMLElement {
@@ -71,6 +79,9 @@ class TableOfContents extends HTMLElement {
     tocEntries: HTMLAnchorElement[] = [];
     active: boolean[] = [];
     activeIndicator: HTMLElement | null = null;
+    initialized = false;
+    // 用于统一解绑「折叠展开 / 窗口尺寸变化」等额外监听
+    extraEventController: AbortController | null = null;
 
     constructor() {
         super();
@@ -95,21 +106,33 @@ class TableOfContents extends HTMLElement {
         this.update();
     };
 
+    setEntryActive = (idx: number, isActive: boolean) => {
+        const entry = this.tocEntries[idx];
+        if (!entry) return;
+        if (isActive) {
+            entry.classList.add(this.visibleClass);
+            entry.setAttribute("aria-current", "true");
+        } else {
+            entry.classList.remove(this.visibleClass);
+            entry.removeAttribute("aria-current");
+        }
+    };
+
     toggleActiveHeading = () => {
         let i = this.active.length - 1;
         let min = this.active.length - 1, max = -1;
         while (i >= 0 && !this.active[i]) {
-            this.tocEntries[i].classList.remove(this.visibleClass);
+            this.setEntryActive(i, false);
             i--;
         }
         while (i >= 0 && this.active[i]) {
-            this.tocEntries[i].classList.add(this.visibleClass);
+            this.setEntryActive(i, true);
             min = Math.min(min, i);
             max = Math.max(max, i);
             i--;
         }
         while (i >= 0) {
-            this.tocEntries[i].classList.remove(this.visibleClass);
+            this.setEntryActive(i, false);
             i--;
         }
         if (min > max) {
@@ -125,12 +148,15 @@ class TableOfContents extends HTMLElement {
 
     scrollToActiveHeading = () => {
         // If the TOC widget can accommodate both the topmost
-        // and bottommost items, scroll to the topmost item. 
+        // and bottommost items, scroll to the topmost item.
         // Otherwise, scroll to the bottommost one.
 
         if (this.anchorNavTarget || !this.tocEl) return;
+        // 不可滚动的容器（如窄屏内联目录）无需自动滚动
+        if (this.tocEl.scrollHeight <= this.tocEl.clientHeight + 4) return;
+        // 只在当前实例内查找，避免桌面/窄屏两套目录互相干扰
         const activeHeading =
-            document.querySelectorAll<HTMLDivElement>(`#toc .${this.visibleClass}`);
+            this.querySelectorAll<HTMLAnchorElement>(`a.${this.visibleClass}`);
         if (!activeHeading.length) return;
 
         const topmost = activeHeading[0];
@@ -153,10 +179,10 @@ class TableOfContents extends HTMLElement {
 
     update = () => {
         requestAnimationFrame(() => {
+            // 目录不可见时（窄屏隐藏 / 折叠状态收起）跳过计算，避免定位错乱
+            if (this.offsetParent === null) return;
             this.toggleActiveHeading();
-            // requestAnimationFrame(() => {
             this.scrollToActiveHeading();
-            // });
         });
     };
 
@@ -169,7 +195,7 @@ class TableOfContents extends HTMLElement {
 
             if (this.isInRange(offsetTop, 0, window.innerHeight)
                 || this.isInRange(offsetBottom, 0, window.innerHeight)
-                || (offsetTop < 0 && offsetBottom > window.innerHeight)) {                    
+                || (offsetTop < 0 && offsetBottom > window.innerHeight)) {
                 this.markActiveHeading(i);
             }
             else if (offsetTop > window.innerHeight) break;
@@ -185,15 +211,28 @@ class TableOfContents extends HTMLElement {
             .composedPath()
             .find((element) => element instanceof HTMLAnchorElement);
 
-        if (anchor) {
-            const id = decodeURIComponent(anchor.hash?.substring(1));
-            const idx = this.headingIdxMap.get(id);
-            if (idx !== undefined) {
-                this.anchorNavTarget = this.headings[idx];
-            } else {
-                this.anchorNavTarget = null;
-            }
+        if (!anchor || !this.contains(anchor)) return;
+
+        const id = decodeURIComponent(anchor.hash?.substring(1));
+        const idx = this.headingIdxMap.get(id);
+        if (idx === undefined) {
+            this.anchorNavTarget = null;
+            return;
         }
+
+        this.anchorNavTarget = this.headings[idx];
+
+        // 平滑滚动到目标标题，并保持地址栏 hash 同步（不触发浏览器默认跳转）
+        event.preventDefault();
+        const target = this.headings[idx];
+        if (!target) return;
+
+        if (anchor.hash !== window.location.hash) {
+            history.replaceState(null, "", anchor.hash);
+        }
+
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
     };
 
     isInRange(value: number, min: number, max: number) {
@@ -210,12 +249,14 @@ class TableOfContents extends HTMLElement {
         } else {
             console.debug('Animation element not found');
         }
+        // 兜底：动画未触发（例如动画被跳过 / 已结束）时也要完成初始化
+        setTimeout(() => this.init(), 1000);
     };
 
     init() {
-        this.tocEl = document.getElementById(
-            "toc-inner-wrapper"
-        );
+        if (this.initialized) return;
+
+        this.tocEl = this.closest<HTMLElement>("[data-toc-scroll]");
 
         if (!this.tocEl) return;
 
@@ -223,10 +264,10 @@ class TableOfContents extends HTMLElement {
             capture: true,
         });
 
-        this.activeIndicator = document.getElementById("active-indicator");
+        this.activeIndicator = this.querySelector<HTMLElement>(".toc-active-indicator");
 
         this.tocEntries = Array.from(
-            document.querySelectorAll<HTMLAnchorElement>("#toc a[href^='#']")
+            this.querySelectorAll<HTMLAnchorElement>("a[href^='#']")
         );
 
         if (this.tocEntries.length === 0) return;
@@ -249,6 +290,14 @@ class TableOfContents extends HTMLElement {
             this.observer.observe(section)
         );
 
+        this.initialized = true;
+
+        // 折叠面板展开 / 窗口尺寸变化（桌面悬浮 ↔ 窄屏内联切换）后重新计算高亮
+        this.extraEventController = new AbortController();
+        const signal = this.extraEventController.signal;
+        this.closest("details")?.addEventListener("toggle", () => this.update(), { signal });
+        window.addEventListener("resize", () => this.update(), { signal, passive: true });
+
         this.fallback();
         this.update();
     };
@@ -258,7 +307,8 @@ class TableOfContents extends HTMLElement {
             this.observer.unobserve(section)
         );
         this.observer.disconnect();
-        this.tocEl?.removeEventListener("click", this.handleAnchorClick);
+        this.extraEventController?.abort();
+        this.tocEl?.removeEventListener("click", this.handleAnchorClick, { capture: true } as EventListenerOptions);
     };
 }
 

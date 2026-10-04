@@ -4,10 +4,16 @@ interface Props {
 	dot?: boolean;
 	href?: string;
 	label?: string;
+	// 传入色相后按钮改用标签专属配色，否则保持默认的灰色按钮
+	hue?: number;
 }
-const { dot, href, label }: Props = Astro.props;
+const { dot, href, label, hue }: Props = Astro.props;
+const colorized = hue !== undefined;
 ---
-<a href={href} aria-label={label} class="btn-regular h-8 text-sm px-3 rounded-lg">
-    {dot && <div class="h-1 w-1 bg-[var(--btn-content)] dark:bg-[var(--card-bg)] transition rounded-md mr-2"></div>}
+<a href={href} aria-label={label} style={colorized ? `--tag-hue: ${hue}` : undefined}
+   class:list={["h-8 text-sm px-3 rounded-lg flex items-center",
+       {"btn-regular": !colorized, "tag-chip": colorized}]}>
+    {dot && <div class:list={["h-1 w-1 transition rounded-md mr-2",
+        {"bg-[var(--btn-content)] dark:bg-[var(--card-bg)]": !colorized, "bg-current": colorized}]}></div>}
     <slot></slot>
 </a>

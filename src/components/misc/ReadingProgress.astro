@@ -1,0 +1,38 @@
+---
+// 阅读进度条：仅在文章页显示（由 body.is-post 控制），跟随窗口滚动更新
+---
+
+<div id="reading-progress" aria-hidden="true" class="pointer-events-none fixed left-0 top-0 z-[70] h-0.5 w-0 bg-[var(--primary)] transition-[width] duration-150"></div>
+
+<script>
+function getProgress() {
+    const scrollTop = document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const scrollHeight = document.documentElement.scrollHeight || 0;
+    const clientHeight = document.documentElement.clientHeight || 0;
+    const scrollable = scrollHeight - clientHeight;
+    if (scrollable <= 0) return 0;
+    return Math.min(1, Math.max(0, scrollTop / scrollable));
+}
+
+function updateProgress() {
+    // 元素可能被 Swup 替换，所以每次都重新查找
+    const bar = document.getElementById("reading-progress");
+    if (!bar) return;
+    bar.style.width = `${(getProgress() * 100).toFixed(2)}%`;
+}
+
+let ticking = false;
+function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+        updateProgress();
+        ticking = false;
+    });
+}
+
+window.addEventListener("scroll", onScroll, { passive: true });
+window.addEventListener("resize", onScroll, { passive: true });
+document.addEventListener("astro:page-load", updateProgress);
+updateProgress();
+</script>

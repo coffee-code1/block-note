@@ -1,0 +1,72 @@
+---
+import { Icon } from "astro-icon/components";
+import { getSortedPosts } from "../../utils/content-utils";
+import { getPostUrlBySlug } from "../../utils/url-utils";
+import WidgetLayout from "./WidgetLayout.astro";
+
+interface Props {
+	class?: string;
+	style?: string;
+}
+const className = Astro.props.class;
+const style = Astro.props.style;
+
+const posts = await getSortedPosts();
+const urls = posts.map((entry) => getPostUrlBySlug(entry.slug));
+---
+
+<WidgetLayout name="随机阅读" id="random-post" class={className} style={style}>
+    <a id="random-post-btn" href={urls[0] ?? "/"}
+       class="btn-regular w-full h-10 rounded-lg gap-2 font-bold active:scale-95">
+        <Icon name="material-symbols:shuffle-rounded" class="text-[1.25rem]"></Icon>
+        随机来一篇
+    </a>
+</WidgetLayout>
+
+<!-- 注意：带 define:vars 的脚本会被 Astro 原样内联、不经过 TS 编译，
+     所以这里只能写纯 JavaScript，不能出现类型标注，否则浏览器会直接报语法错误。 -->
+<script define:vars={{ urls }}>
+(function () {
+    // 元素可能在脚本执行时还没就绪，等 DOM 解析完成再绑定
+    function bind() {
+        const btn = document.getElementById("random-post-btn");
+        if (!btn || !urls || urls.length === 0) return;
+        if (btn.dataset.randomBound === "1") return;
+        btn.dataset.randomBound = "1";
+
+        const normalize = function (path) {
+            return path.replace(/\/+$/, "/");
+        };
+        const currentPath = function () {
+            return normalize(window.location.pathname);
+        };
+
+        // 排除当前正在看的这篇，避免“随机”到自己
+        const pick = function () {
+            const candidates = urls.filter(function (u) {
+                return normalize(u) !== currentPath();
+            });
+            const list = candidates.length > 0 ? candidates : urls;
+            return list[Math.floor(Math.random() * list.length)];
+        };
+
+        const refresh = function () {
+            btn.setAttribute("href", pick());
+        };
+
+        // Swup 会拦截 a 标签的点击并按 href 跳转，所以必须在点击真正发生「之前」换掉 href，
+        // 否则它读到的仍是上一次的地址。pointerdown 早于 click，focus 覆盖键盘 Tab + Enter。
+        btn.addEventListener("pointerdown", refresh, { passive: true });
+        btn.addEventListener("focus", refresh, { passive: true });
+        refresh();
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bind);
+    } else {
+        bind();
+    }
+    // Swup 切页后侧栏不重建，这里只是兜底再绑一次
+    document.addEventListener("astro:page-load", bind);
+})();
+</script>

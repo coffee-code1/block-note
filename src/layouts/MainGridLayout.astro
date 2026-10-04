@@ -39,6 +39,9 @@ const hasBannerLink = !!siteConfig.banner.credit.url;
 const mainPanelTop = siteConfig.banner.enable
 	? `calc(${BANNER_HEIGHT}vh - ${MAIN_PANEL_OVERLAPS_BANNER_HEIGHT}rem)`
 	: "5.5rem";
+
+// 文章页（有标题数据）才在主栅格中开辟右侧目录栏；窄屏（< xl）不显示
+const hasTOC = siteConfig.toc.enable && headings.length > 0;
 ---
 
 <Layout title={title} banner={banner} description={description} lang={lang} setOGTypeArticle={setOGTypeArticle}>
@@ -57,14 +60,17 @@ const mainPanelTop = siteConfig.banner.enable
                   src={siteConfig.banner.src} position={siteConfig.banner.position}
     >
     </ImageWrapper>
+    <!-- 底部渐隐到页面底色，消除横幅图与背景之间的生硬接缝 -->
+    <div id="banner-fade" aria-hidden="true" class="pointer-events-none absolute inset-0 z-10"></div>
 </div>}
 
 <!-- Main content -->
 <div class="absolute w-full z-30 pointer-events-none" style={`top: ${mainPanelTop}`}>
     <!-- The pointer-events-none here prevent blocking the click event of the TOC -->
     <div class="relative max-w-[var(--page-width)] mx-auto pointer-events-auto">
-        <div id="main-grid" class="transition duration-700 w-full left-0 right-0 grid grid-cols-[17.5rem_auto] grid-rows-[auto_1fr_auto] lg:grid-rows-[auto]
-    mx-auto gap-4 px-0 md:px-4"
+        <!-- 有目录时（文章页）在 xl 以上拆出右侧第三列：左侧栏 17.5rem | 正文 auto | 目录 13rem -->
+        <div id="main-grid" class:list={["transition duration-700 w-full left-0 right-0 grid grid-cols-[17.5rem_auto] grid-rows-[auto_1fr_auto] lg:grid-rows-[auto] mx-auto gap-5 px-0 md:px-4",
+            {"xl:grid-cols-[17.5rem_auto_13rem]": hasTOC}]}
         >
             <!-- Banner image credit -->
             {hasBannerCredit && <a href={siteConfig.banner.credit.url} id="banner-credit" target="_blank" rel="noopener" aria-label="Visit image source"
@@ -93,6 +99,23 @@ const mainPanelTop = siteConfig.banner.enable
                 </div>
             </main>
 
+            <!-- 右侧目录栏：xl（1280px）以上为第三列并 sticky 吸附，xl 以下完全不显示（移动端/平板） -->
+            {siteConfig.toc.enable && <div id="toc-wrapper" class:list={["toc-column onload-animation",
+                {"toc-column-visible": hasTOC, "toc-hide": siteConfig.banner.enable}]}>
+                <div class="sticky top-[5.5rem]">
+                    <div class="card-base p-2">
+                        <div id="toc-inner-wrapper" data-toc-scroll class="relative max-h-[calc(100vh_-_11rem)] overflow-y-auto overflow-x-hidden hide-scrollbar">
+                            <div id="toc" class="w-full h-full transition-swup-fade py-1">
+                                <TOC headings={headings}></TOC>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>}
+
+            <!-- #toc 必须始终存在，否则 Swup 无法正常工作 -->
+            {!siteConfig.toc.enable && <div id="toc" class="hidden"></div>}
+
             <div class="footer col-span-2 onload-animation block lg:hidden">
                 <Footer></Footer>
             </div>
@@ -102,24 +125,26 @@ const mainPanelTop = siteConfig.banner.enable
     </div>
 </div>
 
-<!-- The things that should be under the banner, only the TOC for now -->
-<div class="absolute w-full z-0 hidden 2xl:block">
-    <div class="relative max-w-[var(--page-width)] mx-auto">
-        <!-- TOC component -->
-        {siteConfig.toc.enable && <div id="toc-wrapper" class:list={["hidden lg:block transition absolute top-0 -right-[var(--toc-width)] w-[var(--toc-width)] items-center",
-            {"toc-hide": siteConfig.banner.enable}]}
-        >
-            <div id="toc-inner-wrapper" class="fixed top-14 w-[var(--toc-width)] h-[calc(100vh_-_20rem)] overflow-y-scroll overflow-x-hidden hide-scrollbar">
-                <div id="toc" class="w-full h-full transition-swup-fade ">
-                    <div class="h-8 w-full"></div>
-                    <TOC headings={headings}></TOC>
-                    <div class="h-8 w-full"></div>
-                </div>
-            </div>
-        </div>}
+<script>
+// 目录栏始终存在于 DOM（Swup 只替换 #toc 的内容，外层栅格不会重建），
+// 因此需要在每次页面切换后按当前页面是否有目录内容，同步栅格列数与目录栏显示状态。
+const TOC_GRID_CLASS = "xl:grid-cols-[17.5rem_auto_13rem]";
 
-        <!-- #toc needs to exist for Swup to work normally -->
-        {!siteConfig.toc.enable && <div id="toc"></div>}
-    </div>
-</div>
+function syncTocLayout() {
+    const grid = document.getElementById("main-grid");
+    const toc = document.getElementById("toc");
+    const wrapper = document.getElementById("toc-wrapper");
+    if (!grid || !toc) return;
+
+    const hasTOC = toc.children.length > 0;
+    grid.classList.toggle(TOC_GRID_CLASS, hasTOC);
+    wrapper?.classList.toggle("toc-column-visible", hasTOC);
+}
+
+syncTocLayout();
+// Swup 完成页面切换后触发（首次加载不会触发，故上面先执行一次）
+document.addEventListener("astro:after-swap", syncTocLayout);
+document.addEventListener("astro:page-load", syncTocLayout);
+</script>
+
 </Layout>

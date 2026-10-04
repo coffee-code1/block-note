@@ -4,6 +4,8 @@ import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 
+import ClickEffect from "@components/misc/ClickEffect.astro";
+import ReadingProgress from "@components/misc/ReadingProgress.astro";
 import ConfigCarrier from "@components/ConfigCarrier.astro";
 import { profileConfig, siteConfig } from "@/config";
 import {
@@ -71,6 +73,13 @@ const bannerOffsetByPosition = {
 };
 const bannerOffset =
 	bannerOffsetByPosition[siteConfig.banner.position || "center"];
+
+// 社交分享图：站点默认图放在 public 下，保证地址稳定可被外站抓取
+// 若将来为每篇文章生成专属 OG 图，只需替换这里的 ogImageURL 来源
+const ogImageURL = new URL("/og-cover.jpg", Astro.site).href;
+
+// 规范化地址：去掉查询串与 hash，避免分页 / 标签筛选页被当成重复内容
+const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
 ---
 
 <!DOCTYPE html>
@@ -94,11 +103,17 @@ const bannerOffset =
         ) : (
         <meta property="og:type" content="website" />
         )}
+		<meta property="og:image" content={ogImageURL}>
+		<meta property="og:image:alt" content={pageTitle}>
 
 		<meta name="twitter:card" content="summary_large_image">
 		<meta property="twitter:url" content={Astro.url}>
 		<meta name="twitter:title" content={pageTitle}>
 		<meta name="twitter:description" content={description || pageTitle}>
+		<meta name="twitter:image" content={ogImageURL}>
+
+		<!-- 明确首选 URL，避免分页 / 标签页被判定为重复内容 -->
+		<link rel="canonical" href={canonicalURL}>
 
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
@@ -149,14 +164,20 @@ const bannerOffset =
 		<link rel="alternate" type="application/rss+xml" title={profileConfig.name} href={`${Astro.site}rss.xml`}/>
 
 	</head>
-	<body class=" min-h-screen transition " class:list={[{"lg:is-home": isHomePage, "enable-banner": enableBanner}]}
+	<body class=" min-h-screen transition " class:list={[{"lg:is-home": isHomePage, "enable-banner": enableBanner, "is-post": !!setOGTypeArticle}]}
 		  data-overlayscrollbars-initialize
 	>
+		<!-- 背景装饰层：纯 CSS 渐变光晕，不参与交互，位于所有内容之下 -->
+		<div id="page-bg-glow" aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10 overflow-hidden"></div>
+
 		<ConfigCarrier></ConfigCarrier>
 		<slot />
 
 		<!-- increase the page height during page transition to prevent the scrolling animation from jumping -->
 		<div id="page-height-extend" class="hidden h-[300vh]"></div>
+
+		<ClickEffect></ClickEffect>
+		<ReadingProgress></ReadingProgress>
 	</body>
 </html>
 
@@ -170,6 +191,33 @@ const bannerOffset =
     /* 全部自定义组件类，包含 btn-regular-dark */
     .card-base {
         @apply rounded-[var(--radius-large)] overflow-hidden bg-[var(--card-bg)] transition;
+    }
+
+    /* 文章页：右侧多了目录栏，正文会被压缩，因此整体放宽页面宽度。
+       变量由 define:vars 以行内样式写在 body 上，这里需要 !important 才能覆盖。 */
+    body.is-post {
+        --page-width: 84rem !important;
+    }
+
+    /* 背景光晕：两团跟随主题色的柔和光斑，向下渐隐回页面底色 */
+    #page-bg-glow::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(42rem 26rem at 16% 4%, oklch(0.88 0.10 var(--hue) / 0.55), transparent 70%),
+            radial-gradient(34rem 22rem at 84% 20%, oklch(0.90 0.09 calc(var(--hue) + 45) / 0.45), transparent 72%);
+    }
+    #page-bg-glow::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, transparent 35%, var(--page-bg) 88%);
+    }
+    :root.dark #page-bg-glow::before {
+        background:
+            radial-gradient(42rem 26rem at 16% 4%, oklch(0.45 0.12 var(--hue) / 0.38), transparent 70%),
+            radial-gradient(34rem 22rem at 84% 20%, oklch(0.40 0.10 calc(var(--hue) + 45) / 0.32), transparent 72%);
     }
     h1, h2, h3, h4, h5, h6, p, a, span, li, ul, ol, blockquote, code, pre, table, th, td, strong {
         @apply transition;
@@ -528,6 +576,9 @@ const setup = () => {
 			bodyElement!.classList.remove('lg:is-home');
 		}
 
+		// 文章页：整体放宽页面宽度、精简左侧栏（Swup 不会替换 body，需在这里同步）
+		bodyElement!.classList.toggle('is-post', visit.to.url.includes('/posts/'));
+
 		// increase the page height during page transition to prevent the scrolling animation from jumping
 		const heightExtend = document.getElementById('page-height-extend')
 		if (heightExtend) {
@@ -583,7 +634,9 @@ function scrollFunction() {
 	}
 
 	if (bannerEnabled && toc) {
-		if (document.body.scrollTop > bannerHeight || document.documentElement.scrollTop > bannerHeight) {
+		// 目录为空（非文章页）时不解除隐藏，避免渲染出一个空白卡片
+		const tocHasContent = (document.getElementById('toc')?.children.length ?? 0) > 0
+		if (tocHasContent && (document.body.scrollTop > bannerHeight || document.documentElement.scrollTop > bannerHeight)) {
 			toc.classList.remove('toc-hide')
 		} else {
 			toc.classList.add('toc-hide')

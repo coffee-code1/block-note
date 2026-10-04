@@ -3,6 +3,7 @@ import { Icon } from "astro-icon/components";
 import I18nKey from "../i18n/i18nKey";
 import { i18n } from "../i18n/translation";
 import { formatDateToYYYYMMDD } from "../utils/date-utils";
+import { hueFromString } from "../utils/color-utils";
 import { getCategoryUrl, getTagUrl } from "../utils/url-utils";
 
 interface Props {
@@ -67,12 +68,11 @@ const className = Astro.props.class;
         >
             <Icon name="material-symbols:tag-rounded" class="text-xl"></Icon>
         </div>
-        <div class="flex flex-row flex-nowrap items-center">
-            {(tags && tags.length > 0) && tags.map((tag, i) => (
-                <div class:list={[{"hidden": i == 0}, "mx-1.5 text-[var(--meta-divider)] text-sm"]}>/</div>
+        <div class="flex flex-row flex-wrap items-center gap-1.5">
+            {(tags && tags.length > 0) && tags.map((tag) => (
                 <a href={getTagUrl(tag)} aria-label={`View all posts with the ${tag.trim()} tag`}
-                   class="link-lg transition text-50 text-sm font-medium
-                                hover:text-[var(--primary)] dark:hover:text-[var(--primary)] whitespace-nowrap">
+                   style={`--tag-hue: ${hueFromString(tag.trim())}`}
+                   class="tag-chip whitespace-nowrap">
                     {tag.trim()}
                 </a>
             ))}

@@ -1,5 +1,5 @@
 ---
-title: Sqel语法
+title: SpEL语法
 published: 2026-09-24
 updated: 2026-09-24
 description: 学会如何在spingboot框架中自定义注解

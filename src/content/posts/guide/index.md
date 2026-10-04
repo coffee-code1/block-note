@@ -1,51 +1,35 @@
 ---
-title: Simple Guides for Fuwari
-published: 2024-04-01
-description: "How to use this blog template."
-image: "./cover.jpeg"
-tags: ["Fuwari", "Blogging", "Customization"]
+title: 网站指南
+published: 2099-12-30
+description: "本站文章的建议观看路线"
+image: "./cover.webp"
+tags: [观看指南]
 category: Guides
 draft: false
 ---
+# 前言
 
-> Cover image source: [Source](https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/208fc754-890d-4adb-9753-2c963332675d/width=2048/01651-1456859105-(colour_1.5),girl,_Blue,yellow,green,cyan,purple,red,pink,_best,8k,UHD,masterpiece,male%20focus,%201boy,gloves,%20ponytail,%20long%20hair,.jpeg)
+本站是某不知名双非本计算机专业学生后端学习路线的记录，同时也分享给能够找到此站的你。主语言是`java`语言，涵盖了**redis**的基础语法、**redis分布式锁**、**redis实战项目**、**springCloud常用插件**、**微服务实战项目**、**springAI**的基本用法、**大模型应用**（持续更新中）等等。由于本站创建时间较晚，java语法，springboot框架部分有所缺少，之后有时间再补上。
 
-This blog template is built with [Astro](https://astro.build/). For the things that are not mentioned in this guide, you may find the answers in the [Astro Docs](https://docs.astro.build/).
+# 后端学习路线（JAVA语言）
+>
+>[!TIP]
+此路线是我认为的学习路线，并不意味着就是当下或者未来主流路线，**仅作参看即可**。
 
-## Front-matter of Posts
+- `java`语法的学习，这是后端路线的语言基础，可以直接在B站选择播放量最高的视频跟着学习，最少要学习到多线程。其中**反射**以及**动态代理**如果第一次学习难以理解可以先跳过。
+- `javaWeb`学习，可以通过观看黑马javaweb视频学习，此篇章的内容较多涉及到**前端三件套**以及**前端开发框架工具**，跟**后端开发框架**，由于现在逐步趋于**AI全栈**开发，所以我认为前端知识也有必要进行学习，最好不要跳过，但重点仍旧是后面的后端框架`springBoot`,以及`MySQL`数据库，`Maven`工具等等
+- `JUC`跟`JVM`这个模块我个人认为可以跳过，因为对实际开发作用很小，可以放到后续面试时背八股学习，但跳过之前可以对于里面的内容有一个眼熟，便于后面快速学习
+- `Redis`，可以观看黑马的视频，**高级篇**可以根据自己学习情况适当进行取舍，主要学习`redis`语法，redis在`springBoot`框架中的使用
+- **微服务学习**，可以观看黑马的微服务（新版）视频，面试的部分可以跳过等后面面试有需要再看，主要学习分模块思想，以及**常用中间件**的使用比如`nacos`、`gateway`、`seata`、`mq`等等技术
+- 这一步就可以着手准备好自己的微服务项目进行第一次实习了，或者同时也可以进行ai方向的学习
+- **AI方向路线学习站主暂未开发......**
 
-```yaml
----
-title: My First Blog Post
-published: 2023-09-09
-description: This is the first post of my new Astro blog.
-image: ./cover.jpg
-tags: [Foo, Bar]
-category: Front-end
-draft: false
----
-```
+# 本站文章观看指南
 
-| Attribute     | Description                                                                                                                                                                                                 |
-|---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `title`       | The title of the post.                                                                                                                                                                                      |
-| `published`   | The date the post was published.                                                                                                                                                                            |
-| `description` | A short description of the post. Displayed on index page.                                                                                                                                                   |
-| `image`       | The cover image path of the post.<br/>1. Start with `http://` or `https://`: Use web image<br/>2. Start with `/`: For image in `public` dir<br/>3. With none of the prefixes: Relative to the markdown file |
-| `tags`        | The tags of the post.                                                                                                                                                                                       |
-| `category`    | The category of the post.                                                                                                                                                                                   |
-| `draft`        | If this post is still a draft, which won't be displayed.                                                                                                                                                    |
+hmdp篇是点评项目，主要是对于redis分布式锁的使用，但是是基于原理手写的分布式锁，bug有很多，但对于首次学习很有帮助，不涉及redis中redission对于分布式锁的封装<br>
+SpringAI篇是SpringAI的用法介绍<br>
+SpringBoot中会讲述一些比如**注解，Sqel语法**等原理以及使用
 
-## Where to Place the Post Files
+# 有问题可以告诉我
 
-
-
-Your post files should be placed in `src/content/posts/` directory. You can also create sub-directories to better organize your posts and assets.
-
-```
-src/content/posts/
-├── post-1.md
-└── post-2/
-    ├── cover.png
-    └── index.md
-```
+本站内容也是纯手搓，也是第一次学习记录，所以有问题可以通过邮箱联系我（在我主页）

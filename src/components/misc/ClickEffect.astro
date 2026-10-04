@@ -1,0 +1,97 @@
+---
+// 全站点击粒子特效：零依赖，颜色跟随主题色，尊重系统的「减少动效」设置
+---
+
+<div id="click-effect-layer" aria-hidden="true" class="pointer-events-none fixed inset-0 z-[60] overflow-hidden"></div>
+
+<style is:global>
+    .click-particle {
+        position: absolute;
+        pointer-events: none;
+        will-change: transform, opacity;
+        background: oklch(0.72 0.16 calc(var(--hue) + var(--particle-hue, 0)));
+    }
+    .click-particle[data-shape="circle"] {
+        border-radius: 9999px;
+    }
+    .click-particle[data-shape="ring"] {
+        border-radius: 9999px;
+        background: transparent;
+        border: 2px solid oklch(0.72 0.16 calc(var(--hue) + var(--particle-hue, 0)));
+    }
+    .click-particle[data-shape="square"] {
+        border-radius: 2px;
+    }
+    .click-particle[data-shape="star"] {
+        clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    }
+    .click-particle[data-shape="diamond"] {
+        clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    }
+</style>
+
+<script>
+const SHAPES = ["circle", "circle", "ring", "square", "star", "diamond"];
+const PARTICLE_COUNT = 8;
+
+const layer = document.getElementById("click-effect-layer");
+
+const prefersReducedMotion = () =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function burst(x: number, y: number) {
+    if (!layer) return;
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const el = document.createElement("span");
+        const size = 6 + Math.random() * 8;
+        const hueOffset = Math.round(-45 + Math.random() * 90);
+        const distance = 28 + Math.random() * 62;
+        const angle = (Math.PI * 2 * i) / PARTICLE_COUNT + (Math.random() - 0.5) * 0.7;
+        const dx = Math.cos(angle) * distance;
+        const dy = Math.sin(angle) * distance - 12;
+        const rotation = Math.round(-120 + Math.random() * 240);
+
+        el.className = "click-particle";
+        el.dataset.shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+        el.style.cssText = `left:${x}px;top:${y}px;width:${size}px;height:${size}px;--particle-hue:${hueOffset}`;
+
+        layer.appendChild(el);
+
+        const animation = el.animate(
+            [
+                { transform: "translate(-50%, -50%) scale(0.2) rotate(0deg)", opacity: 0.95 },
+                {
+                    transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1) rotate(${rotation * 0.6}deg)`,
+                    opacity: 0.9,
+                    offset: 0.55,
+                },
+                {
+                    transform: `translate(calc(-50% + ${dx * 1.25}px), calc(-50% + ${dy * 1.25 + 20}px)) scale(0.35) rotate(${rotation}deg)`,
+                    opacity: 0,
+                },
+            ],
+            {
+                duration: 620 + Math.random() * 240,
+                easing: "cubic-bezier(.2,.75,.3,1)",
+            },
+        );
+
+        const remove = () => el.remove();
+        animation.onfinish = remove;
+        // 兜底清理，避免动画被中断时残留节点
+        setTimeout(remove, 1400);
+    }
+}
+
+document.addEventListener("click", (event: MouseEvent) => {
+    if (!layer || prefersReducedMotion()) return;
+    // 只响应鼠标左键 / 常规点击
+    if (event.button !== 0) return;
+    // 正在选中文字时不打断用户操作
+    const selection = window.getSelection?.()?.toString() ?? "";
+    if (selection.length > 0) return;
+
+    burst(event.clientX, event.clientY);
+});
+</script>

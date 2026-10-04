@@ -65,6 +65,67 @@
         @apply opacity-0 pointer-events-none
     }
 
+    /* 当前章节高亮：配合滚动指示器使用 */
+    table-of-contents a.visible > div:last-child {
+        @apply font-medium !text-[var(--toc-item-active)];
+    }
+
+    /* 键盘可访问性：聚焦时有明确的焦点环 */
+    table-of-contents a:focus-visible {
+        @apply outline-none ring-2 ring-[var(--primary)] bg-[var(--toc-btn-hover)];
+    }
+
+    /* 右侧目录栏：默认隐藏，xl（1280px）以上且有目录内容时才作为第三列显示 */
+    .toc-column {
+        display: none;
+    }
+    @media (min-width: 1280px) {
+        .toc-column.toc-column-visible {
+            display: block;
+        }
+    }
+
+    /* 兜底：目录内容为空时（如 Swup 切页后的残留状态）强制隐藏整个目录栏，避免出现空白卡片 */
+    #toc-wrapper:not(:has(table-of-contents)) {
+        display: none !important;
+    }
+
+    /* 标签配色：色相由标签名派生，通过内联的 --tag-hue 传入 */
+    .tag-chip {
+        @apply rounded-md px-2 py-0.5 text-sm font-medium transition;
+        color: oklch(0.52 0.13 var(--tag-hue, var(--hue)));
+        background: oklch(0.96 0.045 var(--tag-hue, var(--hue)));
+    }
+    .tag-chip:hover {
+        background: oklch(0.93 0.085 var(--tag-hue, var(--hue)));
+    }
+    :root.dark .tag-chip {
+        color: oklch(0.82 0.11 var(--tag-hue, var(--hue)));
+        background: oklch(0.30 0.05 var(--tag-hue, var(--hue)));
+    }
+    :root.dark .tag-chip:hover {
+        background: oklch(0.36 0.07 var(--tag-hue, var(--hue)));
+    }
+
+    /* 导航栏毛玻璃：滚动时内容从下方透出，增强层次感 */
+    .navbar-glass {
+        @apply rounded-[var(--radius-large)] overflow-hidden transition;
+        background-color: var(--card-bg);
+        background-color: color-mix(in oklab, var(--card-bg) 78%, transparent);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+    }
+
+    /* 阅读进度条只在文章页出现 */
+    body:not(.is-post) #reading-progress {
+        display: none;
+    }
+
+    /* 横幅底部渐隐到页面底色，消除图片与背景之间的生硬接缝 */
+    #banner-fade {
+        background: linear-gradient(to bottom, transparent 45%, var(--page-bg) 96%);
+    }
+
     #toc-inner-wrapper {
         mask-image: linear-gradient(to bottom, transparent 0%, black 2rem, black calc(100% - 2rem), transparent 100%);
     }
@@ -109,6 +170,56 @@
     }
     .btn-regular-dark.success {
         @apply bg-[oklch(0.75_0.14_var(--hue))] dark:bg-[oklch(0.75_0.14_var(--hue))]
+    }
+}
+
+/* 打印 / 导出 PDF：只保留正文，链接附带地址，避免代码块和图片被切断 */
+@media print {
+    #navbar, #top-row, #navbar-wrapper, #banner-wrapper, #sidebar, #toc-wrapper,
+    #reading-progress, #click-effect-layer, #page-bg-glow, #page-height-extend,
+    .back-to-top-wrapper, .giscus, footer, .footer, .pagination, .license-container,
+    #display-setting, #nav-menu-panel, .float-panel {
+        display: none !important;
+    }
+
+    #main-grid {
+        display: block !important;
+    }
+    #swup-container, #content-wrapper {
+        overflow: visible !important;
+    }
+
+    html, body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+    .card-base, .card-shadow {
+        box-shadow: none !important;
+        background: #fff !important;
+    }
+
+    a {
+        color: #000 !important;
+        text-decoration: underline !important;
+    }
+    /* 正文内的外链打印出完整地址 */
+    .custom-md a[href^="http"]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.75rem;
+        color: #555;
+        word-break: break-all;
+    }
+
+    pre, code, blockquote, table, img {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+    img {
+        max-width: 100% !important;
     }
 }
 
