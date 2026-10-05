@@ -26,19 +26,27 @@ import { Icon } from "astro-icon/components";
     font-weight: bold
     border: none
     position: fixed
-    bottom: 10rem
+    bottom: 2rem
+    right: 2rem
+    z-index: 50
     opacity: 1
     cursor: pointer
-    transform: translateX(5rem)
+    transform: translateY(0) scale(1)
     pointer-events: auto
     i
         font-size: 1.75rem
     &.hide
-        transform: translateX(5rem) scale(0.9)
+        transform: translateY(0.5rem) scale(0.9)
         opacity: 0
         pointer-events: none
     &:active
-      transform: translateX(5rem) scale(0.9)
+        transform: translateY(0) scale(0.9)
+
+/* 宽屏文章页（右侧目录栏可见时）：按钮移到目录栏正下方，
+   并相对目录栏水平居中（目录栏 13rem + 容器内边距 1rem，按钮宽 3.75rem） */
+@media (min-width: 1280px)
+    body.is-post .back-to-top-btn
+        right: calc(max(0px, (100vw - var(--page-width))) / 2 + 5.625rem)
 
 </style>
 

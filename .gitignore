@@ -1,5 +1,7 @@
 # build output
 dist/
+# leftover stale build dirs from sandbox rebuild workaround (safe to delete anywhere)
+dist_trash*/
 
 # generated types
 .astro/
