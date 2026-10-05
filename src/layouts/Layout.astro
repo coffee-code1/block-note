@@ -6,6 +6,7 @@ import "@fontsource/roboto/700.css";
 
 import ClickEffect from "@components/misc/ClickEffect.astro";
 import ReadingProgress from "@components/misc/ReadingProgress.astro";
+import SakuraBackground from "@components/misc/SakuraBackground.astro";
 import ConfigCarrier from "@components/ConfigCarrier.astro";
 import { profileConfig, siteConfig } from "@/config";
 import {
@@ -169,6 +170,9 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
 	>
 		<!-- 背景装饰层：纯 CSS 渐变光晕，不参与交互，位于所有内容之下 -->
 		<div id="page-bg-glow" aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10 overflow-hidden"></div>
+
+		<!-- 背景樱花飘落：纯 CSS 动画，不参与交互，位于所有内容之下 -->
+		<SakuraBackground></SakuraBackground>
 
 		<ConfigCarrier></ConfigCarrier>
 		<slot />

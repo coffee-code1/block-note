@@ -1,0 +1,107 @@
+---
+/**
+ * 背景樱花飘落效果
+ *
+ * 性能设计（重点）：
+ * 1. 纯 CSS 动画，零 JavaScript —— 不占用主线程，不监听 scroll / resize。
+ * 2. 只动画 transform 与 opacity 两个属性，全程走合成器（compositor），不触发 layout / paint。
+ * 3. 刻意不使用 will-change：常驻提升的图层会长期占用显存，反而拖慢整体。
+ * 4. 花瓣数量固定，数值由「固定伪随机」在构建期算好，
+ *    运行时不做任何计算，也不会因为 SSR / 客户端不一致而抖动。
+ * 5. 尊重 prefers-reduced-motion：开启减弱动效的系统直接隐藏该层。
+ *
+ * 起始高度：只由下面的 START_TOP 控制，与横幅 / 布局常量无关，改它不会影响页面排版。
+ */
+
+// 花瓣数量：越大越好看，也越耗性能。建议 10 ~ 20。
+const COUNT = 50;
+
+// 樱花开始下落的高度（相对视口顶部），改这一个值就够了：
+//   "0rem"   → 从最上方导航栏的上沿开始（默认，全屏飘落）
+//   "4.5rem" → 从导航栏下沿开始（花瓣不盖住导航栏，导航栏高约 72px = 4.5rem）
+//   "20rem"  → 起点更低，只在页面下半部分飘
+const START_TOP = "0rem";
+
+// 固定伪随机：同样的下标永远得到同样的值，保证每次构建输出一致
+function rand(i: number, salt: number): number {
+	const v = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
+	return v - Math.floor(v);
+}
+
+const petals = Array.from({ length: COUNT }, (_, i) => ({
+	x: 2 + rand(i, 1) * 94, // 水平起始位置（%）
+	size: 9 + rand(i, 2) * 7, // 花瓣大小（px）
+	dur: 17 + rand(i, 3) * 13, // 一次完整下落的时长（s）
+	delay: -rand(i, 4) * 30, // 负延迟：页面一打开就有花瓣在半空中，不用等
+	drift: (rand(i, 5) - 0.5) * 130, // 左右飘移距离（px）
+	spin: 200 + rand(i, 6) * 520, // 旋转总角度（deg）
+	opacity: 0.35 + rand(i, 7) * 0.4, // 最高不透明度
+}));
+---
+
+<div id="sakura-layer" aria-hidden="true" style={`--sakura-start:${START_TOP}`}
+	 class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+	{petals.map((p) => (
+		<span
+			class="sakura-petal"
+			style={`--x:${p.x.toFixed(2)}%;--size:${p.size.toFixed(1)}px;--dur:${p.dur.toFixed(1)}s;--delay:${p.delay.toFixed(1)}s;--drift:${p.drift.toFixed(0)}px;--spin:${p.spin.toFixed(0)}deg;--o:${p.opacity.toFixed(2)}`}
+		></span>
+	))}
+</div>
+
+<style>
+	/* --fall = 花瓣需要走完的垂直距离（容器高度 + 起始时高出容器的 5vh），
+	   保证花瓣正好飘到容器底部时淡出，不会被 overflow 硬生生裁掉。
+	   容器 top 下移多少，--fall 就同步减少多少。 */
+	#sakura-layer {
+		top: var(--sakura-start);
+		--fall: calc(105vh - var(--sakura-start));
+		--sakura-petal-a: oklch(0.88 0.10 355 / 0.80);
+		--sakura-petal-b: oklch(0.81 0.13 340 / 0.70);
+	}
+	:root.dark #sakura-layer {
+		--sakura-petal-a: oklch(0.78 0.11 355 / 0.55);
+		--sakura-petal-b: oklch(0.70 0.13 340 / 0.45);
+	}
+
+	.sakura-petal {
+		position: absolute;
+		top: 0;
+		left: var(--x);
+		width: var(--size);
+		height: var(--size);
+		margin-top: -5vh;
+		border-radius: 150% 0 150% 0; /* 两瓣圆角 → 花瓣形状 */
+		background: linear-gradient(135deg, var(--sakura-petal-a), var(--sakura-petal-b));
+		opacity: 0;
+		animation: sakura-fall var(--dur) linear var(--delay) infinite;
+	}
+
+	/* 只改 transform / opacity，交给合成器处理 */
+	@keyframes sakura-fall {
+		0% {
+			transform: translate3d(0, 0, 0) rotate(0deg);
+			opacity: 0;
+		}
+		6% {
+			opacity: var(--o);
+		}
+		50% {
+			transform: translate3d(calc(var(--drift) * 0.5), calc(var(--fall) * 0.5), 0) rotate(calc(var(--spin) * 0.5));
+		}
+		94% {
+			opacity: var(--o);
+		}
+		100% {
+			transform: translate3d(var(--drift), var(--fall), 0) rotate(var(--spin));
+			opacity: 0;
+		}
+	}
+
+	/* 系统开启「减弱动效」时彻底隐藏，不产生任何动画开销 */
+	@media (prefers-reduced-motion: reduce) {
+		#sakura-layer {
+			display: none;
+		}
+	}
+</style>
