@@ -7,6 +7,7 @@ enum I18nKey {
 	tags = "tags",
 	categories = "categories",
 	recentPosts = "recentPosts",
+	siteStats = "siteStats",
 
 	comments = "comments",
 
@@ -20,6 +21,7 @@ enum I18nKey {
 	minutesCount = "minutesCount",
 	postCount = "postCount",
 	postsCount = "postsCount",
+	tagsCount = "tagsCount",
 
 	themeColor = "themeColor",
 

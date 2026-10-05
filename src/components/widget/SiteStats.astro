@@ -1,0 +1,23 @@
+---
+import { getSiteStats } from "../../utils/content-utils";
+
+const stats = await getSiteStats();
+
+// 大数字加千分位，避免一长串数字不好读
+const format = (n: number) => n.toLocaleString("en-US");
+
+const items = [
+	{ value: format(stats.postCount), unit: "篇文章" },
+	{ value: format(stats.tagCount), unit: "个标签" },
+	{ value: format(stats.wordCount), unit: "字" },
+];
+---
+
+<div class="card-base flex flex-wrap items-center justify-center gap-x-8 gap-y-2 px-6 py-4 mb-4">
+    {items.map(item => (
+        <div class="flex items-baseline gap-1.5">
+            <span class="text-xl font-bold text-[var(--primary)] tabular-nums">{item.value}</span>
+            <span class="text-50 text-sm">{item.unit}</span>
+        </div>
+    ))}
+</div>

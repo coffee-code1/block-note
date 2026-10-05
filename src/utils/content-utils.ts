@@ -72,6 +72,47 @@ export async function getTagList(): Promise<Tag[]> {
 	return keys.map((key) => ({ name: key, count: countMap[key] }));
 }
 
+/**
+ * 统计一个 markdown 正文的字数：
+ * 中日韩按「字」计，英文/数字按「词」计；代码块、行内代码、图片与链接地址不计入。
+ */
+function countWords(markdown: string): number {
+	const text = markdown
+		.replace(/```[\s\S]*?```/g, "")        // 围栏代码块
+		.replace(/~~~[\s\S]*?~~~/g, "")        // 另一种围栏写法
+		.replace(/`[^`\n]*`/g, "")             // 行内代码
+		.replace(/!\[[^\]]*\]\([^)]*\)/g, "")  // 图片
+		.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // 链接只保留文字
+		.replace(/^\s{0,3}>\s?/gm, "")         // 引用符号
+		.replace(/[#*_~|-]+/g, " ");           // 常见标记符号
+
+	const cjk = text.match(/[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/g) ?? [];
+	const latin = text.match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g) ?? [];
+	return cjk.length + latin.length;
+}
+
+export type SiteStats = {
+	postCount: number;
+	tagCount: number;
+	wordCount: number;
+};
+
+/** 站点统计：文章数、标签数、总字数。全部在构建期算好，运行时零开销。 */
+export async function getSiteStats(): Promise<SiteStats> {
+	const allBlogPosts = await getCollection<"posts">("posts", ({ data }) => {
+		return import.meta.env.PROD ? data.draft !== true : true;
+	});
+
+	const tagSet = new Set<string>();
+	let wordCount = 0;
+	allBlogPosts.forEach(post => {
+		post.data.tags.forEach(tag => tagSet.add(tag.trim()));
+		wordCount += countWords(post.body ?? "");
+	});
+
+	return { postCount: allBlogPosts.length, tagCount: tagSet.size, wordCount };
+}
+
 export type Category = {
 	name: string;
 	count: number;

@@ -25,6 +25,7 @@ export function pluginCustomCopyButton() {
 						properties: {
 							className: ["copy-btn"],
 							"aria-label": "Copy code",
+							title: "复制代码",
 						},
 						children: [
 							{

@@ -8,8 +8,10 @@ export const id: Translation = {
 	[Key.search]: "Cari",
 
 	[Key.tags]: "Tag",
+	[Key.tagsCount]: "tag",
 	[Key.categories]: "Kategori",
 	[Key.recentPosts]: "Postingan Terbaru",
+	[Key.siteStats]: "Statistik situs",
 
 	[Key.comments]: "Komentar",
 

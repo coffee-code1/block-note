@@ -8,10 +8,12 @@ export function pluginLanguageBadge() {
 		name: "Language Badge",
 		// @ts-expect-error
 		baseStyles: ({ _cssVar }) => `
+      /* 语言标签放在左上角，避开行号栏（--lnWidth 由 expressive-code 写在 frame 上）；
+         常驻显示，与右上角的复制按钮错开，两者可以同时看到 */
       [data-language]::before {
         position: absolute;
         z-index: 2;
-        right: 0.5rem;
+        left: calc(var(--lnWidth, 0ch) + 1rem);
         top: 0.5rem;
         padding: 0.1rem 0.5rem;
         content: attr(data-language);
@@ -24,26 +26,7 @@ export function pluginLanguageBadge() {
         border-radius: 0.5rem;
         pointer-events: none;
         transition: opacity 0.3s;
-        opacity: 0;
-      }
-      .frame:not(.has-title):not(.is-terminal) {
-        @media (hover: none) {
-          & [data-language]::before {
-            opacity: 1;
-            margin-right: 3rem;
-          }
-          & [data-language]:active::before {
-            opacity: 0;
-          }
-        }
-        @media (hover: hover) {
-          & [data-language]::before {
-            opacity: 1;
-          }
-          &:hover [data-language]::before {
-            opacity: 0;
-          }
-        }
+        opacity: 0.9;
       }
     `,
 	});
