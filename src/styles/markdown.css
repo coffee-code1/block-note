@@ -1,3 +1,6 @@
+/* 标题悬停时的锚点符号是 ✦（星芒），在 astro.config.mjs 的
+   rehypeAutolinkHeadings 里配置；本文件只负责它的出现动效。 */
+
 .custom-md {
     h1 {
         @apply text-3xl;
@@ -11,13 +14,21 @@
             @apply transition -m-0.5 ml-[0.2ch] p-0.5 select-none opacity-0 no-underline !important;
 
             .anchor-icon {
-                @apply mx-[0.45ch] !important;
+                @apply mx-[0.45ch] inline-block !important;
+                line-height: 1;
+                /* 悬停出现时轻轻“弹出回正”：只动 transform（走合成层），
+                   且不设 will-change，避免为每个标题长期预留图层占内存 */
+                transform: scale(0.55) rotate(-18deg);
+                transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
             }
         }
 
         &:hover {
             .anchor {
                 @apply opacity-100 !important;
+            }
+            .anchor .anchor-icon {
+                transform: scale(1) rotate(0deg);
             }
         }
     }

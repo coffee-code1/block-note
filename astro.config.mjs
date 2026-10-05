@@ -145,7 +145,7 @@ export default defineConfig({
 						children: [
 							{
 								type: "text",
-								value: "#",
+								value: "\u2726", // ✦ 标题悬停时显示的锚点符号，可换成 "¶" "§" "●" "#" 等
 							},
 						],
 					},
