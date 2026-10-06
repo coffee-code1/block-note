@@ -15,6 +15,8 @@ jobs:
       - name: Setup Biome
         uses: biomejs/setup-biome@f382a98e582959e6aaac8e5f8b17b31749018780 # v2.5.0
         with:
-          version: latest
+          # 锁定与 package.json 一致的版本：latest 的新版 CSS 规则会把
+          # Astro/Svelte 的 @apply、:root.dark 等非标准语法误判为错误
+          version: 2.2.5
       - name: Run Biome
         run: biome ci ./src --reporter=github

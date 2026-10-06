@@ -42,8 +42,8 @@ export const siteConfig: SiteConfig = {
 export const navBarConfig: NavBarConfig = {
 	links: [
 		LinkPreset.Home,
-  		LinkPreset.Archive,
-  		LinkPreset.About,
+		LinkPreset.Archive,
+		LinkPreset.About,
 		{
 			name: "GitHub",
 			url: "https://github.com/coffee-code1/fuwari", // Internal links should not include the base path, as it is automatically added
@@ -75,9 +75,9 @@ export const profileConfig: ProfileConfig = {
 			url: "https://github.com/coffee-code1",
 		},
 		{
- 	 		name: "邮箱",
-  			icon: "fa6-solid:envelope",
- 			url: "mailto:3097812946@qq.com",
+			name: "邮箱",
+			icon: "fa6-solid:envelope",
+			url: "mailto:3097812946@qq.com",
 		},
 	],
 };

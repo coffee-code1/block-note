@@ -1,12 +1,12 @@
 import { defineCollection, z } from "astro:content";
-import { defineConfig } from 'astro/config';
+import { defineConfig } from "astro/config";
 
 export default defineConfig({
-  image: {
-    service: {
-      entrypoint: 'astro/assets/services/sharp'
-    }
-  }
+	image: {
+		service: {
+			entrypoint: "astro/assets/services/sharp",
+		},
+	},
 });
 const postsCollection = defineCollection({
 	schema: z.object({
