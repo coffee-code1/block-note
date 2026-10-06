@@ -8,12 +8,6 @@ tags: [Maven]
 category: Maven
 draft: false 
 ---
-- [Maven在微服务中的使用](#maven在微服务中的使用)
-  - [父工程](#父工程)
-  - [当前模块声明](#当前模块声明)
-  - [当前模块的依赖配置](#当前模块的依赖配置)
-    - [dependence标签](#dependence标签)
-    - [build标签](#build标签)
 
 # Maven在微服务中的使用
 

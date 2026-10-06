@@ -8,17 +8,6 @@ tags: [SpringAI]
 category: SpringAI
 draft: false 
 ---
-- [结构化输出转化器](#结构化输出转化器)
-  - [一、基本概念](#一基本概念)
-    - [1.1 什么是转化器](#11-什么是转化器)
-    - [1.2 有哪些结构器](#12-有哪些结构器)
-    - [支持的AI模型](#支持的ai模型)
-  - [二、基本用法](#二基本用法)
-    - [2.1 入门实例](#21-入门实例)
-    - [2.2 BeanOutPutConverter](#22-beanoutputconverter)
-      - [生成模式中的属性顺序](#生成模式中的属性顺序)
-    - [2.3 ListOutPutConverter](#23-listoutputconverter)
-    - [2.4 MapOutPutConverter](#24-mapoutputconverter)
 
 # 结构化输出转化器
 

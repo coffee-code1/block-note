@@ -8,14 +8,6 @@ tags: [SpringAI]
 category: SpringAI
 draft: false 
 ---
-- [聊天记忆](#聊天记忆)
-  - [1.聊天记忆跟聊天历史区分](#1聊天记忆跟聊天历史区分)
-  - [2. 记忆类型](#2-记忆类型)
-    - [`MessageWindowChatMemory`](#messagewindowchatmemory)
-  - [3. 记忆存储](#3-记忆存储)
-    - [默认`InMemoryChatMemoryRepository`](#默认inmemorychatmemoryrepository)
-    - [其它的存储类](#其它的存储类)
-  - [3. 怎么用](#3-怎么用)
 
 # 聊天记忆
 

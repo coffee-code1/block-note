@@ -8,20 +8,6 @@ tags: [SpringAI]
 category: SpringAI
 draft: false 
 ---
-- [Advisor API](#advisor-api)
-  - [一、Advisor定义](#一advisor定义)
-  - [二、核心组件](#二核心组件)
-    - [2.1 顶层基础接口](#21-顶层基础接口)
-    - [2.2 两条核心分支接口（同步 / 流式）](#22-两条核心分支接口同步--流式)
-      - [同步非流式：`CallAroundAdvisor` extends Advisor](#同步非流式callaroundadvisor-extends-advisor)
-      - [流式：`StreamAroundAdvisor` extends Advisor](#流式streamaroundadvisor-extends-advisor)
-    - [2.3 核心分支链接口](#23-核心分支链接口)
-      - [`CallAroundAdvisorChain`](#callaroundadvisorchain)
-      - [`StreamAroundAdvisorChain`](#streamaroundadvisorchain)
-    - [2.4 数据模型类](#24-数据模型类)
-    - [2.5 内置Advisor类](#25-内置advisor类)
-  - [三、执行流程](#三执行流程)
-  - [四、实现Advisor](#四实现advisor)
 
 # Advisor API
 

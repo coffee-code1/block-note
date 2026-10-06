@@ -8,21 +8,6 @@ tags: [SpringBoot]
 category: Annotation
 draft: false 
 ---
-- [注解(Annotation)](#注解annotation)
-  - [一、基本概念](#一基本概念)
-    - [1.1 定义](#11-定义)
-    - [1.2 分类](#12-分类)
-    - [① 内置基础注解](#-内置基础注解)
-    - [② 元注解（用来**修饰注解本身**，`@Target @Retention`）](#-元注解用来修饰注解本身target-retention)
-    - [③ 自定义注解](#-自定义注解)
-  - [二、用法](#二用法)
-    - [2.1 内置注解](#21-内置注解)
-    - [2.2 元注解](#22-元注解)
-      - [`Target`使用](#target使用)
-      - [`Retention`使用](#retention使用)
-      - [`Constraint`使用](#constraint使用)
-    - [2.3 自定义注解](#23-自定义注解)
-  - [三、反射的应用](#三反射的应用)
 
 # 注解(Annotation)
 

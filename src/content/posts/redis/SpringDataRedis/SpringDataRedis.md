@@ -7,15 +7,6 @@ category: Redis
 draft: false
 ---
 # SpringDataRedis
-- [SpringDataRedis](#springdataredis)
-  - [是什么](#是什么)
-  - [优点](#优点)
-  - [如何使用](#如何使用)
-  - [使用步骤](#使用步骤)
-  - [SpringDataRedis中的序列化](#springdataredis中的序列化)
-  - [其它的序列化器](#其它的序列化器)
-    - [序列化器种类](#序列化器种类)
-    - [如何使用](#如何使用-1)
 
 ## 是什么
 Spring Data Redis 是 Spring Data 子项目，封装 Redis 客户端操作，简化 Spring / SpringBoot 整合 Redis，屏蔽原生 Jedis、Lettuce API 底层细节，提供统一模板、注解式缓存、Redis Repository 序列化方案。

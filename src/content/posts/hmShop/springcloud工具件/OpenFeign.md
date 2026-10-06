@@ -8,16 +8,6 @@ tags: [SpringCloud,OpenFeign]
 category: SpringCloud
 draft: false 
 ---
-- [OpenFeign优化服务发现](#openfeign优化服务发现)
-  - [依赖引入](#依赖引入)
-  - [FeignClient配置](#feignclient配置)
-  - [注入配置](#注入配置)
-  - [okHttp优化](#okhttp优化)
-    - [依赖引入](#依赖引入-1)
-    - [配置修改](#配置修改)
-  - [最佳实践](#最佳实践)
-    - [第一种实例](#第一种实例)
-  - [日志打印](#日志打印)
 
 # OpenFeign优化服务发现
 ## 依赖引入

@@ -8,20 +8,6 @@ tags: [SpringAI]
 category: SpringAI
 draft: false 
 ---
-- [提示词](#提示词)
-  - [1.什么是提示词](#1什么是提示词)
-  - [2.prompt类](#2prompt类)
-    - [message类](#message类)
-  - [3. `PromptTemplate`模板](#3-prompttemplate模板)
-    - [3.1 什么是模板](#31-什么是模板)
-    - [3.2 自定义模板格式](#32-自定义模板格式)
-    - [3.3 `PromptTemplate`的接口实现类](#33-prompttemplate的接口实现类)
-  - [4. `PromptTemplate`的基本用法](#4-prompttemplate的基本用法)
-    - [4.1 常见的方法以及用法](#41-常见的方法以及用法)
-      - [1.构造器](#1构造器)
-      - [2.三个核心方法：render /create/createMessage](#2三个核心方法render-createcreatemessage)
-    - [4.2 使用案例](#42-使用案例)
-  - [`SystemPromptTemplate`专门为SystemMessage设置的模板类](#systemprompttemplate专门为systemmessage设置的模板类)
 
 # 提示词
 

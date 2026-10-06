@@ -6,15 +6,6 @@ tags: [Redis,RRateLimiter]
 category: Redis
 draft: false
 ---
-- [Redisson分布式限流器RRateLimiter](#redisson分布式限流器rratelimiter)
-  - [1.什么是分布式限流器](#1什么是分布式限流器)
-  - [2.如何使用](#2如何使用)
-    - [常见方法](#常见方法)
-    - [使用实例](#使用实例)
-  - [3.底层原理](#3底层原理)
-      - [源码分析](#源码分析)
-        - [创建限流器](#创建限流器)
-        - [创建获取令牌](#创建获取令牌)
 
 # Redisson分布式限流器RRateLimiter
 
