@@ -65,7 +65,7 @@ const { remarkPluginFrontmatter } = await entry.render();
         </a>
 
         <!-- metadata -->
-        <PostMetadata published={published} updated={updated} tags={tags} category={category} hideTagsForMobile={true} hideUpdateDate={true} class:list={["mb-4", {"md:mb-5": hero}]}></PostMetadata>
+        <PostMetadata published={published} updated={updated} tags={tags} category={category} hideTagsForMobile={true} hideUpdateDate={true} class={hero ? "mb-4 md:mb-5" : "mb-4"}></PostMetadata>
 
         <!-- description -->
         <div class:list={["transition text-75 mb-3.5 pr-4",

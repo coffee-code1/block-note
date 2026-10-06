@@ -132,10 +132,71 @@
 
     }
 
+    /* 普通引用块：主题色竖条 + 淡背景卡片。
+       提示块（blockquote.admonition）有自己的类型配色，必须排除，否则会串色 */
+    blockquote:not(.admonition) {
+        @apply pl-5 pr-4 py-2 rounded-xl bg-black/[0.03];
+
+        &:before {
+            @apply left-1.5 top-2 bottom-2 h-auto bg-[var(--primary)] w-1;
+        }
+    }
+
+    /* 表格：圆角外框 + 表头底色 + 斑马纹 + 悬停高亮 */
+    table {
+        @apply w-full my-4 text-sm rounded-xl border border-black/10;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    thead th {
+        @apply px-4 py-2.5 text-left font-medium text-90 bg-[var(--btn-regular-bg)] align-bottom;
+    }
+    thead th:first-child {
+        @apply rounded-tl-xl;
+    }
+    thead th:last-child {
+        @apply rounded-tr-xl;
+    }
+    tbody td {
+        @apply px-4 py-2.5 border-t border-black/5 align-top;
+    }
+    /* 斑马纹：偶数行淡底色，鼠标悬停时整行高亮 */
+    tbody tr {
+        @apply transition;
+    }
+    tbody tr:nth-child(even) {
+        @apply bg-black/[0.02];
+    }
+    tbody tr:hover {
+        @apply bg-[var(--btn-plain-bg-hover)];
+    }
+    /* 最后一行的两个下角，避免直角戳出圆角外框 */
+    tbody tr:last-child td:first-child {
+        @apply rounded-bl-xl;
+    }
+    tbody tr:last-child td:last-child {
+        @apply rounded-br-xl;
+    }
+
     .katex-display-container {
         max-width: 100%;
         overflow-x: auto;
         margin: 1em 0;
     }
     
+}
+
+/* 深色模式覆盖：Tailwind 的 dark: 变体在 .custom-md 嵌套块内的 @apply 中不会展开，
+   所以这里按站内既有写法（main.css 的 :root.dark）手写一遍 */
+:root.dark .custom-md blockquote:not(.admonition) {
+    background-color: rgb(255 255 255 / 0.04);
+}
+:root.dark .custom-md table {
+    border-color: rgb(255 255 255 / 0.10);
+}
+:root.dark .custom-md tbody td {
+    border-color: rgb(255 255 255 / 0.08);
+}
+:root.dark .custom-md tbody tr:nth-child(even) {
+    background-color: rgb(255 255 255 / 0.03);
 }

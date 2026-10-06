@@ -11,6 +11,7 @@ const sortedPostsList = await getSortedPostsList();
 
 <MainGridLayout title={i18n(I18nKey.archive)}>
     <SiteStats></SiteStats>
+    {/* @ts-expect-error Astro 无法为 client:only 的 Svelte 组件生成准确的 Props 类型 */}
     <ArchivePanel sortedPosts={sortedPostsList} client:only="svelte"></ArchivePanel>
 </MainGridLayout>
 

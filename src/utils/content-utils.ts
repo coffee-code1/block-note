@@ -106,7 +106,9 @@ export async function getSiteStats(): Promise<SiteStats> {
 	const tagSet = new Set<string>();
 	let wordCount = 0;
 	allBlogPosts.forEach(post => {
-		post.data.tags.forEach(tag => tagSet.add(tag.trim()));
+		post.data.tags.forEach(tag => {
+			tagSet.add(tag.trim());
+		});
 		wordCount += countWords(post.body ?? "");
 	});
 

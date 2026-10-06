@@ -19,7 +19,8 @@ interface Post {
 	data: {
 		title: string;
 		tags: string[];
-		category?: string;
+		// 兼容 PostForList：category 可能为 null（未分类文章）
+		category?: string | null;
 		published: Date;
 	};
 }

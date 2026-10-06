@@ -128,13 +128,13 @@ const jsonLd = {
             ></script>
             <!-- 同步Fuwari明暗主题切换 -->
             <script>
-            function setGiscusTheme(theme) {
-            const iframe = document.querySelector('iframe.giscus-frame');
+            function setGiscusTheme(theme: string) {
+            const iframe = document.querySelector('iframe.giscus-frame') as HTMLIFrameElement | null;
             if (!iframe) return;
-            iframe.contentWindow.postMessage({ giscus: { setConfig: { theme } } }, 'https://giscus.app');
+            iframe.contentWindow?.postMessage({ giscus: { setConfig: { theme } } }, 'https://giscus.app');
             }
             document.addEventListener('astro:theme-change', (e) => {
-            setGiscusTheme(e.detail.theme);
+            setGiscusTheme((e as CustomEvent).detail.theme);
             })
             </script>
             <!-- ========== Giscus代码结束 ========== -->

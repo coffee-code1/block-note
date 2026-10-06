@@ -6,8 +6,7 @@ import { definePlugin } from "@expressive-code/core";
 export function pluginLanguageBadge() {
 	return definePlugin({
 		name: "Language Badge",
-		// @ts-expect-error
-		baseStyles: ({ _cssVar }) => `
+		baseStyles: () => `
       /* 语言标签放在左上角，避开行号栏（--lnWidth 由 expressive-code 写在 frame 上）；
          常驻显示，与右上角的复制按钮错开，两者可以同时看到 */
       [data-language]::before {

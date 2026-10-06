@@ -32,7 +32,8 @@ export type SiteConfig = {
 	};
 	toc: {
 		enable: boolean;
-		depth: 1 | 2 | 3;
+		// 目录最多显示的标题层级数；TOC 组件已支持任意层级，不再限制 1~3
+		depth: number;
 	};
 
 	favicon: Favicon[];
