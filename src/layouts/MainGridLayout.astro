@@ -1,6 +1,7 @@
 ---
 import BackToTop from "@components/control/BackToTop.astro";
 import Footer from "@components/Footer.astro";
+import BannerSlogan from "@components/misc/BannerSlogan.astro";
 import Navbar from "@components/Navbar.astro";
 import SideBar from "@components/widget/SideBar.astro";
 import type { MarkdownHeading } from "astro";
@@ -60,6 +61,8 @@ const hasTOC = siteConfig.toc.enable && headings.length > 0;
                   src={siteConfig.banner.src} position={siteConfig.banner.position}
     >
     </ImageWrapper>
+    <!-- 横幅标语：仅首页显示，一行静态文字 + 缓慢呼吸辉光（纯 CSS） -->
+    <BannerSlogan></BannerSlogan>
     <!-- 底部渐隐到页面底色，消除横幅图与背景之间的生硬接缝 -->
     <div id="banner-fade" aria-hidden="true" class="pointer-events-none absolute inset-0 z-10"></div>
 </div>}
