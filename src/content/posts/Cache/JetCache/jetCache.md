@@ -94,6 +94,15 @@ private Cache<String, User> idUserCache;
 >[!TIP]
 最后一个集群 BOTH 二级缓存必开，删除缓存广播清除所有实例本地 Caffeine 缓存
 
+- `@CacheRefresh`缓存刷新
+
+~~~java
+@CacheRefresh(refresh = 60, timeUnit = TimeUnit.MINUTES)
+~~~
+
+>[!TIP]
+当有请求调用时就会开启定时任务刷新，如果设置`stopRefreshAfterError = true`就会遇到异常停止，或者删除了缓存就会停止，其他情况并不会
+
 ### 2.5 方案二：手动实现缓存
 
 #### 手动创建

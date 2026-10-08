@@ -2,14 +2,18 @@
 title: 网站指南
 published: 2099-12-30
 description: "本站文章的建议观看路线"
-image: "./cover.webp"
+image: "./cover1.jpeg"
 tags: [观看指南]
 category: Guides
 draft: false
 ---
+# IMPORTNANT
+
+如果出现图片加载不出来，或者加载缓慢，尝试刷新一下就好了，目前的服务器配置不高。。。
+
 # 前言
 
-本站是某不知名双非本计算机专业学生后端学习路线的记录，同时也分享给能够找到此站的你。主语言是`java`语言，涵盖了**redis**的基础语法、**redis分布式锁**、**redis实战项目**、**springCloud常用插件**、**微服务实战项目**、**springAI**的基本用法、**大模型应用**（持续更新中）等等。由于本站创建时间较晚，java语法，springboot框架部分有所缺少，之后有时间再补上。
+本站是某不知名双非本计算机专业学生的后端学习路线记录，同时也分享给能够找到此站的你。主语言是`java`语言，涵盖了**redis**的基础语法、**redis分布式锁**、**redis实战项目**、**springCloud常用插件**、**微服务实战项目**、**springAI**的基本用法、**大模型应用**（持续更新中）等等。由于本站创建时间较晚，java语法，springboot框架部分有所缺少，之后有时间再补上。
 
 # 后端学习路线（JAVA语言）
 >
