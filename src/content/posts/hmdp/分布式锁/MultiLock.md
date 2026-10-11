@@ -4,15 +4,19 @@ published: 2026-07-09
 updated: 2026-07-14
 description: 通过redis实现分布式锁
 image: ''
-tags: [点评项目,分布式锁,Redis,Lua,Redisson]
-category: Redis
+tags: [点评项目,分布式锁,Redis,Lua,Redisson,RLOCK]
+category: Redis实战
 draft: false 
 ---
 
 # 一、什么是分布式锁
+
 ## 1.1 概念
+
 定义：在分布式系统或者集群模式下都能**共用一个锁**，并且之间锁是互斥的，就叫做分布式锁。
+
 ## 1.2 特点
+
 1.多线程可见
 2.互斥
 3.高可用
@@ -20,18 +24,24 @@ draft: false
 5.安全性
 
 # 二、基于redis实现方法
+
 ![多种方案](1.png)
 >[!TIP]
 这里采取redis的实现，setnx设置分布式互斥锁，ttl设置互斥时间，防止redis宕机无法删除互斥锁形成死锁。
+
 ## 2.1 redis核心操作
+
 获取锁:
 set KEY Value ex seconds nx
 删除锁：
 delete KEY
 >[!TIP]
 这里ex后设置时间 nx是唯一 setnx一样，这样写的好处就是原子性，同时设置锁与过期时间
+
 ## 2.2 代码实现
+
 封装成工具类
+
 ~~~java
 //接口
 public interface ILOCK {
@@ -157,9 +167,12 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 }
 ~~~
+
 >[!NOTE]
 这里的锁的实现类不是bean所以无法直接注入redisTemplate需要通过构造函数进行赋值
+
 ## 2.3 遗留问题
+
 ![上述的线程安全问题](2.png)
 >[!NOTE]
 问题在于当我的锁设置的ttl**过期时间过短**，**业务执行逻辑过长**，当一个线程进来获取后，还没执行完毕，**锁就自己删除了**，那么下一个线程进来又可以获取一个锁，第一个线程此时执行完后，由于没有任何的判断就删除了新来的线程的锁，这个时候线程三同理获取新的锁这样就出现了线程安全的问题。<br>
@@ -167,11 +180,13 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 本质原因在于删除锁unlock时没有任何的判断直接就根据用户id删除了锁，就会出现删除了别的线程但是都是以用户id作为前缀的锁
 
 ## 2.4 解决办法
+
 1.思路就是我在删除时，判断一下**当前的锁是不是我自己的**，那我们可以考虑定义一个线程的标识把**线程的标识存入redis锁中**，每次删除前判断一下是不是我这个线程的锁，是我在删除不是就不删除。
 
 2.那么这线程标识是什么，我们知道在jvm中**线程的id是递增**的，所以我们可以考虑用id用来表示，但是不同的jvm是不一样的，会出现重复，所以我们在**使用uuid拼接id**这样就可以了。
 
 ## 2.5 实现方法
+
 ~~~java
 public class SimpleRedisLock implements ILOCK{
 
@@ -205,31 +220,38 @@ public class SimpleRedisLock implements ILOCK{
     }
 }
 ~~~
+
 >[!TIP]
 这里用uuid加拼接线程id的方式，生成一个前缀然后，充当value;
 
 ## 2.6 修改后的问题
+
 ![修改后的问题](3.png)
 我们发现，因为我们在删除跟获取键值对时不是原子性的，所以会出现问题就是当我们判断完确实是对应的锁时，我们在删除之前，锁过期了，然后突然进入第二个线程，线程就会获取新的锁，但是我之前的线程此时执行了删除（根据lock前缀）所以就会删掉这个线程二的锁，那么我们线程三在进来，就会出现线程安全。
 
 ## 2.7 lua语言
+
 ### 2.7.1 什么是lua语言
+
 redis提供了其脚本功能，是一种编程语言,而且lua语言保证了**一个语句内的原子性**，完美的解决了上述由于**两条语句出现的原子性的问题**
 [lua语言](https://www.runoob.com/lua/lua-tutorial.html)
 
 ### 2.7.2 如何调用
+
 在这里我们只需要知道其中的调用函数语法就行
 redis.call('set','KEYS[1]','ARGV[1]')name JACK
 ![lua](4.png)
 1.表示设置name 为 JACK，这里**KEYS跟ARGV是存入参数的数组**，**从1开始**，前者存入的是**redis中的键**，后者存的是其它的参数。
 2.set换成get就是获取name的value值
 
-### 2.7.3 在redis中调用:
+### 2.7.3 在redis中调用
+
 EVAL "脚本内容"
 对应分布式锁的逻辑应该是:
 ![分布式锁lua](5.png)
 ![redis调用](6.png)
 以下代码的常量跟之前的含义是一样的，未作改动
+
 ~~~java
 //为了便于更改我们设置了一个lua文件专门写脚本
 if(redis.call('get',KEY[1]) == ARGV[1])then
@@ -256,21 +278,29 @@ return 0
 //DefaultRedisScript是实现类RedisScript来应用脚本，初始化采取静态代码块，设置读取文件内容路径，以及返回值类型
 //在excute方法中，参数分别是RedisScript实现类，KEYS数组，以及ARGVS参数
 ~~~
+
 >[!TIP]
 1.这里的路径**ClassPath指的就是resource根目录**，由于lua文件直接在其下创建所以可以直接引用，也可以采取注入**ResourceLoader调用getResource（）**获取任意路径<br>
 2.这里的**KEYS必须要封装成数组**，**而ARGV不需要**，可以直接传入多个参数，在底层就会自动封装成数组
+
 # 三、基于Redission实现
+
 ## 3.1 rediss的问题
+
 ![redis的问题](7.png)
 
 ## 3.2 什么是Redission
+
 ### 3.2.1 Redission的简介
+
 ![Redission简介](8.png)
 **<span style="color:red">可参考:</span>**
 ::github{repo="redisson/redisson"}
 
 ### 3.2.2 Redisson的使用方法
+
 **1.** 先引入redisson的依赖在pom文件里
+
 ~~~java
  <dependency>
             <groupId>org.redisson</groupId>
@@ -280,6 +310,7 @@ return 0
 ~~~
 
 **2.** 创建一个配置类用来配置Redisson,返回值类型是RedissonClient
+
 ~~~java
 @Configuration
 public class RedissonConfig {
@@ -292,10 +323,12 @@ public class RedissonConfig {
     }
 }
 ~~~
+
 >[!TIP]
 注意这里的是**单节点**
 
 **3.**在Service层中注入bean，调用相关方法
+
 ~~~java
     //注入
     @Resource
@@ -318,11 +351,16 @@ public class RedissonConfig {
         }
 ~~~
 
-## 3.3 Redisson中可重入锁的原理
-![Redisson中可重入锁的原理](9.png)
-<span style = "color : red">本质上是通过hash结构存储，以lua脚本实现，每次获取一次锁就加一，释放一次就减一，判断是否为0，是就释放锁<span>
+## 3.3 Redisson中可重入锁的原理（RLOCK）
 
-获取锁的脚本：
+`Redisson`提供了很多的锁，其中可重入锁最常用
+![Redisson中可重入锁的原理](9.png)
+**本质就是使用 Redis Hash 结构存储锁信息，用 Lua 脚本保证原子性，靠计数器实现可重入；搭配看门狗自动续期，Pub/Sub 实现锁释放唤醒**
+>[!TIP]
+注意的是可重入锁并不是就等于`RLOCK`，只是`Redisson`默认就是这个锁
+
+可重入锁底层获取锁的`Lua`脚本：
+
 ~~~lua
 local key = KEYS[1];--锁的key
 local threadId = ARGV[1];--线程唯一标识
@@ -347,10 +385,12 @@ redis.call('pexpire',key,releaseTime);
 end;
 return 0; --标识锁不是自己的，获取失败
 ~~~
+
 >[!TIP]
 这里如果获取锁失败，也就是存在自己的锁就会有这样一行return redis.call('pttl',KEYS[1]);
 
-释放锁的脚本：
+底层释放锁的脚本：
+
 ~~~lua
 local key = KEYS[1];--锁的key
 local threadId = ARGV[1]; -- 线程唯一标识
@@ -373,17 +413,21 @@ else -- 删除锁
     return nil;
 end;
 ~~~
+
 >[!TIP]
 这里的**nil是null**的意思，这里**hash结构filed中key代表线程标识(UUID+id)，value代表重入次数**，每次**获取+1**，**释放-1**，当为**0**时代表正好可以删除锁从redis中
 
 ## 3.4 Redisson中锁的可重式机制
+
 ### 3.4.1 核心机制--订阅发布消息/超时兜底重试机制
-#### 1. 有参等待时间情况，ttl参数
-tryLock逻辑:
-1.会**先进行获取锁尝试**，并且记录整个过程的时间，失败后，如果当前的剩余时间（ttl减去耗费时间）还存在就会调用**sunsrcibe**方法，接收的是以下lua中**锁释放时pulish的信号。**
-2.这里的等待是一个**异步**请求，并同时获取当前时间，如果等到了就直接再次尝试获取锁，如果没有再次获取当前时间，判断剩余时间是否够，大于0，则进入while循环尝试获取锁，同理要再次算这次尝试消耗时间，如果失败要判断是否有剩余时间，有就接着进行等待下一次的消息发出，当进行获取锁时要判断**剩余时间跟等待时间**的**最小值**，防止锁在获取时过期
+
+#### 1. 设置了（leaseTime）锁的过期时间（不启用看门狗）
+
+1.会**先进行获取锁尝试**，并且记录整个过程的时间，失败后，如果当前的剩余时间（ttl减去耗费时间）还存在就会调用**sunsrcibe**方法，接收的是以下lua中**锁释放时pulish的信号。**<br>
+2.这里的等待是一个**异步**请求，并同时获取当前时间，如果等到了就直接再次尝试获取锁，如果没有再次获取当前时间，判断剩余时间是否够，大于0，则进入while循环尝试获取锁，同理要再次算这次尝试消耗时间，如果失败要判断是否有剩余时间，有就接着进行等待下一次的消息发出，当进行获取锁时要判断**剩余时间跟等待时间**的**最小值**，防止锁在获取时过期<br>
 3.当**获取成功，或者剩余时间为0**，就会结束
 ![原理](10.png)
+
 ~~~lua
   "if (redis.call('hexists', KEYS[1], ARGV[3]) == 0) then " +
         "return nil;" +
@@ -402,7 +446,8 @@ tryLock逻辑:
         "return nil;",
 ~~~
 
-#### 2.没有释放时间的参数，只有等待时间
+#### 2.没有释放锁的时间的参数（启用看门狗）
+
 1.这里如果没有等待时间，在尝试获取锁时，会调用**看门狗（WatchDog）机制**，设置**默认时间为30s**，调用以下方法：
 ![原理](11.png)
 这里的**renewExpirtion**就是通过定时任务不断**每过10s**就执行一个lua脚本，里面会更新锁的过期时间，这样就达到了续期的效果。一直到获取锁成功才会结束。
@@ -411,17 +456,39 @@ tryLock逻辑:
 <br>
 释放锁就需要根据entryName也就是锁的名字，删除线程id，取消定时任务，最后移除这个entry锁。
 
-#### 3.无参的情况
-等待时间为0，剩余时间为0，只会获取一次，剩余时间为0直接就结束了
+### 3.4.2 RLOCK是什么
+
+`RLock` 是 Redisson 的**分布式可重入非公平互斥锁**，继承 `RLock` → `RedissonBaseLock`，实现 JDK `java.util.concurrent.locks.Lock` 接口，API 风格和 `ReentrantLock` 对齐，但是锁数据保存在 Redis，跨 JVM、多实例共享。<br>
+
+### 3.4.3 RLOCK常用方法
+
+~~~java
+RLock lock = redissonClient.getLock("lock:inviteRank");//通过key获取对应的锁，这里并没有与redis有任何交互，再下面的加锁方法才有创建redis锁
+
+lock(); // 阻塞加锁，直到拿到锁，【开启看门狗】
+lock(10, TimeUnit.SECONDS); // 指定leaseTime=10s，【看门狗失效】
+
+tryLock(); // 尝试获取，拿到true，拿不到直接false不等待，只抢锁一次，启用看门狗
+tryLock(waitTime, leaseTime, unit); // 最多等待waitTime，锁租期leaseTime，看门狗失效
+
+unlock(); // 释放锁
+isHeldByCurrentThread(); // 判断当前线程是否持有锁
+
+~~~
 
 ## 3.5 redisson解决主从一致性问题
+
 ### 3.5.1 什么是主从一致性问题
+
 主从一致性就是redis分成**主节点**跟**从节点**，主节点负责核心业务，从节点负责其他业务，**数据之间需要共享**，当主节点获取新的数据，传送给从节点时，发生了宕机，这样从节点就无法获取，此时从节点就会成为新的主节点，这样就出现了问题。数据丢失了
+
 ### 3.5.2 MultiLock解决
+
 Redisson中的可重入锁，采用hash结构存入的是存在以上问题的
 而MultiLock则近似于其集合，采用多个redis节点，并且要全部都获取锁才能生效，否则无法获取。
 
 #### 内部的原理
+
 本质还是tryLock核心逻辑，不同之处是是锁的一个集合，需要一个个遍历这些锁，在开始遍历获取锁之前，会先判断是否传入等待时间，传入就会后在后续采用新的锁过期时间，防止在拿到锁后就直接过期了（由于业务的网络等问题时间变长）
 ![multiLock](12.png)
 >[!NOTE]
@@ -430,5 +497,3 @@ Redisson中的可重入锁，采用hash结构存入的是存在以上问题的
 然后开始一个个遍历利用**集合迭代器**，每一次遍历都计算剩余的时间，这里**过期时间跟剩余等待时间**是一样的，如果超时则失败。如果获取失败就会**清空所有的获取的锁**重新尝试获取。
 
 最后全部获取成功，如果传入了锁的过期时间，lua会统一给所有的锁设置过期时间（按照上面修改后的），此时开始计时过期时间，否则就不会，直接走看门狗机制。
-
-

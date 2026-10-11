@@ -5,7 +5,7 @@ updated: 2026-10-08
 description: 快速掌握MapStruct的基本用法，以及原理
 image: ''
 tags: [MapStruct]
-category: MapStruct
+category: 常用工具
 draft: false 
 ---
 # 一、什么是MapStruct
