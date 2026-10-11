@@ -5,7 +5,7 @@ updated: 2026-07-31
 description: 从安装到应用，零基础学习Docker
 image: ''
 tags: [Docker]
-category: Docker
+category: 常用工具
 draft: false 
 ---
 # 一、什么是Docker

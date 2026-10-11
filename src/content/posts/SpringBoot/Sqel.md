@@ -4,8 +4,8 @@ published: 2026-09-24
 updated: 2026-09-24
 description: 学会如何在spingboot框架中自定义注解
 image: ''
-tags: [SpringBoot]
-category: Spel
+tags: [SpringBoot,SpEL]
+category: spring
 draft: false 
 ---
 

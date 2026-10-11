@@ -5,12 +5,14 @@ updated: 2026-07-20
 description: 利用redis中的geo结构实现附近商铺查询
 image: ''
 tags: [点评项目,Redis,GEO]
-category: Redis
+category: Redis实战
 draft: false 
 ---
 
 # 一、GEO
+
 ## 1.1 基本概念
+
 ![什么是GEO](1.png);
 
 ## 1.2 常见的语法
@@ -18,16 +20,19 @@ draft: false
 1. GEOADD key 经度 纬度 成员名 [经度 纬度 成员名 ...]<br>
 2. GEODIST key A B km<br>
 3. GEORADIUS key 我的经度 我的纬度 1 km WITHDIST [ASC]  查询我周边维度周边1km内，并排序
+
 >[!TIP]
 本质是sortedsort
 
 # 二、附近商户功能实现
 
 ## 2.1 接口设计
+
 ![接口思路](2.png)
 我们将商店类型作为key,商户id作为hashkey，商户坐标作为value;
 
 ## 2.2 数据库商店信息导入redis
+
 ~~~java
 @Test
 void loadShopData() {
@@ -56,9 +61,12 @@ void loadShopData() {
 stringRedisTemplate.opsForGeo().add(key, locations);
 }
 ~~~
+
 ## 2.3 代码实现
+
 这里由于此项目 Spring Data Redis 版本低于2.5，所以只能采取**GEORADIUS**的方法查询周围商铺<br>
 controller：
+
 ~~~java
 
     @GetMapping("/of/type")
@@ -73,6 +81,7 @@ controller：
 ~~~
 
 Service:
+
 ~~~java
 
     @Override

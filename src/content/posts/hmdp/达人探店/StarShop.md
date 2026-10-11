@@ -5,20 +5,25 @@ updated: 2026-07-17
 description: 实现发布博客，点赞，查看博客的功能
 image: ''
 tags: [点评项目,Redis]
-category: Redis
+category: Redis实战
 draft: false 
 ---
 
 # 一、发布笔记
+
 ## 1.1 数据库表结构
+
 ![数据库表](1.png)
 
 ## 1.2 接口设计
+>
 >[!TIP]
 这里我们的接口分成上传整篇文章，跟上传图片两个，这样可以实现上传图片功能的复用，一般都是上传的oss等专门存储图片数据的地方，本文则传到了本地路径
 
 ## 1.3 代码实现
+
 图片上传
+
 ~~~java
 @Slf4j
 @RestController
@@ -44,7 +49,9 @@ public class UploadController {
     }
 }
 ~~~
+
 博客上传接口实体类：
+
 ~~~java
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -121,6 +128,7 @@ public class Blog implements Serializable {
 
 }
 ~~~
+
 >[!NOTE]
 这里的TableField指的是数据库里没有的字段
 
@@ -138,10 +146,15 @@ public class Blog implements Serializable {
 ~~~
 
 # 二、查看笔记
+
 ## 2.1 逻辑
+
 除了实现一个根据博客id查询博客内容外，还需要根据该博客下的用户id查询用户，返回用户的名字跟图像给前端，便于前端展示用户，以便于浏览者关注
+
 ## 2.2 代码实现
+
 我们可以把查询用户抽离成一个方法，也方便后面查询hot笔记时的复用
+
 ~~~java
 //controller层
   @GetMapping("/{id}")
@@ -180,9 +193,13 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 ~~~
 
 # 三、笔记点赞
+
 ## 3.1 思路
+
 ![点赞](2.png)
+
 ## 3.2 代码实现
+
 ~~~java
 //Controller
   @PutMapping("/like/{id}")
@@ -227,6 +244,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 ~~~
 
 在查询blog中加入查询是否被点赞，逻辑一致，所以抽离出一个方法,这加入这个方法即可
+
 ~~~java
  private void isBlogLiked(Blog blog){
         UserDTO user = UserHolder.getUser();
@@ -242,11 +260,17 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         blog.setIsLike(BooleanUtil.isTrue(isMember));
     }
 ~~~
+
 # 四、点赞排行榜
+
 ## 4.1 功能实现逻辑
+
 排行榜就是，根据**点赞的先后时间**，显示出最新点赞的五人，这是**需要排序**，原先的set就无法实现了，在保留原来的set加上排序，我们可以用**Sortedset**，把**时间戳作为score作为排序依据**
+
 ## 4.2 代码实现
+
 controller:
+
 ~~~java
  @GetMapping("/likes/{id}")
     public Result queryBlogLikes(@PathVariable("id") Long id) {
@@ -256,6 +280,7 @@ controller:
 
 Service:
 修改原先点赞记录的set为Zset
+
 ~~~java
  @Override
     public Result likeBlog(Long id){
@@ -287,7 +312,9 @@ Service:
         return Result.ok();
     }
 ~~~
+
 查询点赞前五逻辑
+
 ~~~java
   @Override
     public Result queryBlogLikes(Long id) {
@@ -307,5 +334,6 @@ Service:
         return Result.ok(userDTOs);
     }
 ~~~
+
 >[!NOTE]
 这里注意sortedset的使用方法，以及**stream跟方法引用**的代码化简，由于listByIds查**询数据库的数据顺序跟传入的id顺序不一致**，所以这里先存到**map里确保顺序**是对的，在**存入dto里返回给前端**

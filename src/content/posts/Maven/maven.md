@@ -5,7 +5,7 @@ updated: 2026-09-20
 description: Maven在分布式中的应用
 image: ''
 tags: [Maven]
-category: Maven
+category: 常用工具
 draft: false 
 ---
 

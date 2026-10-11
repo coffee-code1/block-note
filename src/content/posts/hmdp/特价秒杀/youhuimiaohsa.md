@@ -5,20 +5,27 @@ updated: 2026-06-30
 description: 利用缓存机制解决优惠券秒杀的问题
 image: ''
 tags: [点评项目,乐观锁悲观锁,Redis]
-category: Redis
+category: Redis实战
 draft: false 
 ---
 
 # 一、优惠券全局唯一ID
+
 ## 1.1 为什么需要唯一id
+
 因为优惠券是一次性使用的，每个优惠券都必须有不同的id。并且也不能像mysql里面的主键自增一样，这样的话就会很有规律，容易看出店家的营销情况。
+
 ## 1.2 全局ID生成器的特性
+
 ![全局id生成器特性](2.png)
+
 ## 1.3 如何设置唯一ID
+
 这里可以采取redis里面的**incrby**，但是这样也是有规律的所以我们采取了一个**64bit位**的数，前面四个存储的是**时间**，即**现在的时间到自定义的起始时间**，后四位则是redis的**自增**记录，这样就解决了一个是**自增的规律性**，一个是在同一时间内，有大量的优惠券，避免了**重复的id**两个问题。
 ![设置ID](1.png)
 
 ## 1.4 代码实现
+
 ~~~java
 
 @Component
@@ -42,11 +49,14 @@ public class RedisIDWorker {
     }
 }
 ~~~
+
 >[!NOTE]
 注意这里redis里面的key要设置年月日否则的话，key名一样，这样是存不下的，因为只靠递增只有32位
 
 # 二、秒杀券的实现
+
 ## 2.1 实现流程
+
 1.前端传入优惠券的id给后端，后端从数据库中查询
 2.先判断是否过期，即开始时间是否开始，结束时间是否结束
 3.查看存储优惠券数量，查看剩余库存
@@ -55,6 +65,7 @@ public class RedisIDWorker {
 6.将订单存入数据库
 
 ## 2.2 代码实现
+
 ~~~java
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
@@ -108,24 +119,36 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 }
 ~~~
+
 >[!TIP]
 >这里的UserId本质是一个自定义类，里面是定义了静态ThreadLocal.
 
 ## 2.3 超卖问题
+
 ### 2.3.1 超卖问题的原因
+
 ![超卖问题](3.png)
 >[!NOTE]
 这里我们发现，超卖问题就是因为多个线程意外进入，导致的卖出的优惠券数额不对，出现了多卖到负数的情况
+
 ### 2.3.2 如何解决
+
 ![乐观与悲观锁](4.png)
 >[!NOTE]
 互斥锁也是悲观锁，区别就是悲观锁一定会获取锁，乐观锁是先不获取，如果数据已经被其他线程修改就触发乐观锁，**悲观锁性能低**
+
 #### 3.2.1 乐观锁的实现
+
 ##### 1.版本号法
+
 就是通过一个变量version来代表每一次的数据修改，没修改一次就会加一，这样在有线程乱入，修改时，发现当前版本号与之前的不一致则代表已经被修改就会执行失败
+
 ##### 2.CAS(compare and set)
+
 跟版本号差不多，就是这里的库存减少可以跟版本号合并，充当一个作用
+
 #### 3.2.2 乐观锁CAS代码实现
+
 ~~~java
   boolean success = seckillVoucherService
                 .update().setSql("stock = stock - 1")
@@ -136,14 +159,22 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return Result.fail("修改失败");
         }
 ~~~
+
 >[!NOTE]
 这里之所以不是判断库存是否相等，是因为这样会导致很多线程失败。
+
 ## 2.4 一人一单
+
 ### 2.4.1 实现思路
+
 就是在超卖问题基础上，在查询订单是否存在，存在就代表该用户已经有了，就返回失败，没有订单就创建订单
+
 ### 2.4.2 悲观锁的应用
+
 不加锁的话，一个用户会买很多券，所以需要锁，又因为我们是将订单加入数据库，所以乐观锁无法查是否相等，只能用悲观锁了
+
 ### 2.4.3 实现代码
+
 ~~~java
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
@@ -205,8 +236,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 }
 ~~~
+
 >[!NOTE]
 注意这里的锁的位置，直接使用锁方法，会大大降低效率，加在方法代码块里会出现，在事务提交成功前，就进行下一个线程了，出现不安全的问题。
+
 ~~~java
     //上述api调用需要引入该依赖
     //并且还要在启动类上加入注解，@EnableAspectJAutoProxy(exposeProxy = true)暴露事务才行
@@ -215,6 +248,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             <artifactId>aspectjweaver</artifactId>
         </dependency>
 ~~~
+
 ### 2.4.4 分布式问题
+
 现在的方案在**单体系统**中是正常的，但是一旦换**分布式系统**，依然会出现并发问题<br>
 原因就是每一个服务器都有一个自己的**jvm**，每个jvm内部都有一个**锁监听器**来管理，所以多个服务器有多个jvm，也就有多个监听器了，那么锁对于同一个用户就有可能失去效果，从而出现问题。这个时候就需要**分布式锁**去解决问题了。

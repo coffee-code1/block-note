@@ -5,7 +5,7 @@ published: 2026-06-17
 description: 基于session实现的短信登陆功能
 image: ''
 tags: [session,点评项目,Redis]
-category: Redis
+category: Redis实战
 draft: false 
 ---
 
@@ -18,7 +18,9 @@ draft: false
 ![短信验证流程](1.png)
 
 #### 1.生成验证码
+
 大致思路： 首先要**检验手机号**是否正确，然后在生成验证码，这个验证码就是一定位数的**随机数字组合**而成，这里用hutool包里的随机数生成更方便
+
 ~~~java
 //Controller层：
   @PostMapping("code")//接口
@@ -52,6 +54,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 ~~~
 
 #### 2.登录
+
 ~~~java
 //Controller层：
     @PostMapping("/login")//接口，传入的参数就是自定义类，里面包含了基本信息，session负责存入一些重要信息
@@ -100,8 +103,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 }
 ~~~
+
 #### 3.检验登录状态
+
 如何检验登录状态呢，思路很简单，就是我在每次调用接口的时候，如果有必要进行检验，那么就会被定义的拦截器拦截，然后通过**session获取当前用户**，如果是空代表没登陆，那么就会返回错误状态给前端，如果不为空则代表登录了。
+
 ~~~java
 public class LoginInterceptor implements HandlerInterceptor {
 
@@ -158,18 +164,23 @@ public class MvcConfig implements WebMvcConfigurer {
 ~~~
 
 ## 基于session的弊端
+
 我们发现，session是tomcat每个服务器独有的，也就是说多个服务器之前并不是互通的，如果后续采用多个服务器的话，会出现同一个用户登陆完之后，下一次访问出现仍需登录情况，原因就是session数据不共享。
 
 ## 基于redis解决
+
 而redis首先存入以及读取速度快，并且不同服务器存入redis的话，数据共享，而且是关系型数据库，键值对的存储的形式。
 
 ### 思路
+
 ![redis实现短信验证登录思路](2.png)
 >[!TIP]
 >1.采用redis之后，就不再使用session了，所以我们生成验证码，就需要存入redis中，但需要通过**键值对**的方法，那么我们可以用**电话作为key**存储，这样也不会重复也好查找。
 >
 >2.在登录以及登录状态验证时，都是将用户存到**ThreadLocal**里，同时登录时存入数据库，以及redis中，但是服务器并不会像session那样可以携带**sessionid登陆标识**，所以我们需要手动**生成token**作为标识给前端，前端在存入浏览器中存储地方，这样每次都会有，我们在检验登录时就可以**通过请求头名字获取标识**，在**redis中通过key**的名字也就是标识，来获取值了。
+>
 ### 方法实现
+
 ~~~java
     @Service
 @Slf4j
@@ -241,8 +252,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 }
 ~~~
+
 >[!WARNING]
 >上面以经做到了以redis为基础存储数据了，并且还设置了时间，但是问题在于这个有效时间是一旦创立就会进行，而我们想要的是用户不进行任何操作时才开始计时的，所以我们应该通过拦截器，每次有一次活动一定会被拦截（登录除外）那么我么可以覆盖之前的redis，从而达到更新时间的效果
+
 ~~~java
 //这里定义了两个拦截器相比于之前，因为现在需要更新时间，所以我们单独定义一个RefashLoginIntercepter拦截器去刷新有效时间。先刷新 Token 再校验登录，避免刚过期的 Token 访问时直接拦截
 public class LoginInterceptor implements HandlerInterceptor {
@@ -295,6 +308,7 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
 }
 
 ~~~
+
 ~~~java
 由于这里的拦截器是自定义的，所以不能交给spring管理，也不能注入stringRedisTemplate所以我们只能通过构造方法的方式给stringRedisTemplate赋值。
 

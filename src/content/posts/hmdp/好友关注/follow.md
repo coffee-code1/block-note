@@ -5,23 +5,28 @@ updated: 2026-07-18
 description: 实现博主关注，共同关注的功能
 image: ''
 tags: [点评项目,Feed流滚动查询,Redis]
-category: Redis
+category: Redis实战
 draft: false 
 ---
 
 # 一、关注跟取关功能
+
 ## 1.1 数据库建表
+
 ![表结构](1.png)
 >[!NOTE]
 这里id是自增的，user_id指的是粉丝id，follow_user_id是要关注的博主id
 
 ## 1.2 逻辑思路
+
 我们想要实现用户可以看哪些人关注了，哪些没有，并且可以点击关注而关注，那我们需要一个**boolean值来标记**哪些关注了，哪些没有。关注的动作是一个简单的crud，我们**直接操作数据库，关注就增加，取关就删除即可**，这里的数据都封装在**Follow中**去写入数据库
 >[!TIP]
 Follow中又userId，FollowUserId是需要我们写入的。
 
 ## 1.3 代码实现
+
 controller:
+
 ~~~java
 @RestController
 @RequestMapping("/follow")
@@ -39,7 +44,9 @@ public class FollowController {
     }
 }
 ~~~
+
 Service
+
 ~~~java
 @Service
 public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> implements IFollowService {
@@ -74,10 +81,13 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
     }
 }
 ~~~
+
 # 二、共同关注
 
 ## 2.1 共同关注，笔记查询
+
 传给前端，便于展示博主信息
+
 ~~~java
 // UserController 根据id查询用户
     @GetMapping("/{id}")
@@ -105,11 +115,15 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
         return Result.ok(records);
     }
 ~~~
+
 ## 2.2 逻辑思路
+
 就是通过redis中的set集合中的交集实现的，所以在上面我们要加入将关注者存入set中，然后再进行比较两个用户id的集合之间的交集
 
 ## 2.3 代码实现
+
 加入redis
+
 ~~~java
   //存入redis中
             if(save){
@@ -121,7 +135,9 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
             }
 
 ~~~
+
 核心逻辑
+
 ~~~java
  @Override
     public Result followCommons(Long id){
@@ -148,8 +164,11 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
 ~~~
 
 # 三、文章推送
+
 ## 3.1 推送至粉丝收件箱
+
 思路很简单就是在博主发布新的blog时在存入数据库的同时，在**额外的先查询关注的粉丝**，在写入到**redis**中，每个粉丝的收件箱都是一个**set**，以便于后面分页查询时更高效
+
 ~~~java
   @Override
     public Result saveBlog(Blog blog) {
@@ -179,14 +198,19 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
 ## 3.2 feed流滚动查询收件箱
 
 ### 3.2.1 什么是feed流
+
 Feed 流（信息流）是持续滚动、按算法 / 时间排序、不断加载新内容的垂直内容列表，用户上下滑动就能不间断浏览图文、视频、动态，是现在绝大多数 App 的核心内容形式。
+
 ### 3.2.2 优点以及实现思路
+>
 >[!TIP]
 采取传统的分页查询（PageSize,PageNum）在**数据不断更新**插入时容易出现**重复或者遗漏**的情况，所以这里是滚动查询，就是利用**SortedSet**用**时间戳**作为**scores**作为排序的依据，然后每次查询都需要知道**上一次查询的最小值，跳过重复的**<br>
 ![查询思路](2.png)
 
 ### 3.2.3 代码实现
+
 新建一个类便于传给前端
+
 ~~~java
 @Data
 public class ScrollResult {
@@ -196,14 +220,18 @@ public class ScrollResult {
 }
 
 ~~~
+
 controller:
+
 ~~~java
   @GetMapping("/of/follow")
     public Result queryBlogOfFollow(@RequestParam("lastId")Long max,@RequestParam(value = "offset",defaultValue = "0")Integer offset){
         return blogService.queryBlogOfFollow(max,offset);
     }
 ~~~
+
 Service:
+
 ~~~java
     public Result queryBlogOfFollow(Long max,Integer offset){
         //获取当前用户
