@@ -365,3 +365,317 @@ POST _bulk
 
 >[!TIP]
 在devTool中对于每一个操作，变更的文档都要写在同一行，不要分行写
+
+# 三、SpringBoot中使用
+
+## 3.1 索引库操作
+
+### 3.1.1 初始化RestClient
+
+在elasticsearch提供的API中，与elasticsearch一切交互都封装在一个名为RestHighLevelClient的类中，必须先完成这个对象的初始化，建立与elasticsearch的连接。
+
+#### 依赖配置
+
+~~~xml
+<dependency>
+    <groupId>org.elasticsearch.client</groupId>
+    <artifactId>elasticsearch-rest-high-level-client</artifactId>
+</dependency>
+~~~
+
+#### 初始化
+
+~~~java
+RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(
+        HttpHost.create("地址")
+));
+~~~
+
+### 3.1.2 创建索引库
+
+利用`CreateIndexRequest`类，`indices`方法返回的是很多方法，其中`create`就是一个
+
+~~~java
+  // 1.创建Request对象
+    CreateIndexRequest request = new CreateIndexRequest("items");
+    // 2.准备请求参数
+    request.source(MAPPING_TEMPLATE, XContentType.JSON);//第一个是自定义的字符串，是创建索引库的指令，第二个参数代表类型是JSON
+    // 3.发送请求
+    client.indices().create(request, RequestOptions.DEFAULT);
+~~~
+
+### 3.1.3 删除索引库
+
+~~~java
+    // 1.创建Request对象
+    DeleteIndexRequest request = new DeleteIndexRequest("items");
+    // 2.发送请求
+    client.indices().delete(request, RequestOptions.DEFAULT);
+~~~
+
+### 3.1.4 查询索引库
+
+~~~java
+ // 1.创建Request对象
+    GetIndexRequest request = new GetIndexRequest("items");
+    // 2.发送请求
+    boolean exists = client.indices().exists(request, RequestOptions.DEFAULT);
+~~~
+
+## 3.2 文档操作
+
+### 3.2.1 新增文档
+
+~~~java
+@Test
+void testIndexDocument() throws IOException {
+    // 1. 创建 IndexRequest 对象，指定索引库名 indexName，文档id=1
+    IndexRequest request = new IndexRequest("indexName").id("1");
+
+    // 2. 设置文档JSON内容，指定数据类型为JSON
+    request.source("{\"name\": \"Jack\", \"age\": 21}", XContentType.JSON);
+
+    // 3. 客户端发送请求，执行新增（覆盖）文档
+    client.index(request, RequestOptions.DEFAULT);
+}
+// \是转义“”用的
+~~~
+
+### 3.2.2 查询文档
+
+~~~java
+  // 1.准备Request对象
+    GetRequest request = new GetRequest("items").id("100002644680");
+    // 2.发送请求
+    GetResponse response = client.get(request, RequestOptions.DEFAULT);
+    // 3.获取响应结果中的source
+    String json = response.getSourceAsString();
+    //将json转成自定义的类
+    ItemDoc itemDoc = JSONUtil.toBean(json, ItemDoc.class);
+~~~
+
+### 3.2.3 删除文档
+
+~~~java
+// 1.准备Request，两个参数，第一个是索引库名，第二个是文档id
+    DeleteRequest request = new DeleteRequest("item", "100002644680");
+    // 2.发送请求
+    client.delete(request, RequestOptions.DEFAULT);
+~~~
+
+### 3.2.4 修改文档
+
+全局修改就是上面的新增，下面是局部修改
+
+~~~java
+   // 1.准备Request
+    UpdateRequest request = new UpdateRequest("items", "100002644680");
+    // 2.准备请求参数
+    request.doc(
+            "price", 58800,
+            "commentCount", 1
+    );
+    // 3.发送请求
+    client.update(request, RequestOptions.DEFAULT);
+~~~
+
+### 3.2.5 批量操作文档
+
+~~~java
+  // 1.创建Request
+    BulkRequest request = new BulkRequest();
+    // 2.准备请求参数
+    request.add(new IndexRequest("items").id("1").source("json doc1", XContentType.JSON));
+    request.add(new IndexRequest("items").id("2").source("json doc2", XContentType.JSON));
+    // 3.发送请求
+    client.bulk(request, RequestOptions.DEFAULT);
+~~~
+
+# 四、Elasticsearch DSL语句
+
+我们可以发现上面的查询都是按照索引id查询，如何进行模糊呢，就需要ES的DSL了
+
+## 4.1 什么是DSL
+
+DSL = Domain Specific Language，领域专用语言
+
+## 4.2 定义
+
+Elasticsearch的查询可以分为两大类：
+
+- 叶子查询（Leaf query clauses）：一般是在特定的字段里查询特定值，属于简单查询，很少单独使用。
+- 复合查询（Compound query clauses）：以逻辑方式组合多个叶子查询或者更改叶子查询的行为方式。
+
+## 4.3 快速入门
+
+~~~JSON
+GET /{索引库名}/_search
+{
+  "query": {
+    "查询类型": {
+      // .. 查询条件
+    }
+  }
+}
+~~~
+
+## 4.4 叶子查询
+
+叶子查询的类型也可以做进一步细分，这里只介绍常见的三种
+
+### 1.全文检索查询
+
+~~~JSON
+GET /{索引库名}/_search
+{
+  "query": {
+    "match": {
+      "字段名": "搜索条件"
+    }
+  }
+}
+~~~
+
+这里是根据多字段去查询，所以相比较上面的就会出现性能上的不足
+
+~~~JSON
+GET /{索引库名}/_search
+{
+  "query": {
+    "multi_match": {
+      "query": "搜索条件",
+      "fields": ["字段1", "字段2"]
+    }
+  }
+}
+~~~
+
+### 2.精确查询
+
+就是不会进行分词操作，之间按照这个词语进行查询，因此推荐查找keyword、数值、日期、boolean类型的字段
+
+~~~JSON
+GET /{索引库名}/_search
+{
+  "query": {
+    "term": {
+      "字段名": {
+        "value": "搜索条件"
+      }
+    }
+  }
+}
+~~~
+
+>[!TIP]
+这里term表示精确查询，不进行分词操作，与match等平级
+
+~~~JSON
+GET /{索引库名}/_search
+{
+  "query": {
+    "range": {
+      "字段名": {
+        "gte": {最小值},
+        "lte": {最大值}
+      }
+    }
+  }
+}
+~~~
+
+## 4.5 复合查询
+
+复合查询大致可以分为两类：
+
+- 第一类：基于逻辑运算组合叶子查询，实现组合条件，例如
+  - bool
+- 第二类：基于某种算法修改查询时的文档相关性算分，从而改变文档排名。例如：
+  - function_score
+  - dis_max
+这里只介绍第一类
+
+### bool查询
+
+bool查询支持的逻辑运算有：
+
+- must：必须匹配每个子查询，类似“与”
+- should：选择性匹配子查询，类似“或”
+- must_not：必须不匹配，不参与算分，类似“非”
+- filter：必须匹配，不参与算分
+<br>
+
+注意的是这里请求路径的_search是必备的
+
+~~~JSON
+GET /items/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {"match": {"name": "手机"}}
+      ],
+      "should": [
+        {"term": {"brand": { "value": "vivo" }}},
+        {"term": {"brand": { "value": "小米" }}}
+      ],
+      "must_not": [
+        {"range": {"price": {"gte": 2500}}}
+      ],
+      "filter": [
+        {"range": {"price": {"lte": 1000}}}
+      ]
+    }
+  }
+}
+~~~
+
+## 4.6 排序
+
+注意的是这里请求路径的_search是必备的
+
+~~~JSON
+GET /indexName/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "sort": [
+    {
+      "排序字段": {
+        "order": "排序方式asc和desc"
+      }
+    }
+  ]
+}
+~~~
+
+## 4.7 分页
+
+### 4.7.1 基础分页
+
+elasticsearch中通过修改from、size参数来控制要返回的分页结果：
+
+- from：从第几个文档开始
+- size：总共查询几个文档
+类似于mysql中的limit ?, ?
+
+~~~JSON
+GET /items/_search
+{
+  "query": {
+    "match_all": {} //这里也可以换成match等
+  },
+  "from": 0, // 分页开始的位置，默认为0
+  "size": 10,  // 每页文档数量，默认10
+  "sort": [
+    {
+      "price": {
+        "order": "desc"
+      }
+    }
+  ]
+}
+~~~
+
+### 4.7.2 深度分页
