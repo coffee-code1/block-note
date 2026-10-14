@@ -1,5 +1,5 @@
 ---
-title: Elasticsearch
+title: Elasticsearch进阶
 published: 2026-10-14
 updated: 2026-10-14
 description: 学会DSL语句，es的进阶用法
