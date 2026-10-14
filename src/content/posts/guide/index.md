@@ -2,7 +2,7 @@
 title: 网站指南
 published: 2099-12-30
 description: "本站文章的建议观看路线"
-image: "./cover1.jpeg"
+image: "./cover.png"
 tags: [观看指南]
 category: Guides
 draft: false
@@ -37,3 +37,5 @@ SpringBoot中会讲述一些比如**注解，Sqel语法**等原理以及使用
 # 有问题可以告诉我
 
 本站内容也是纯手搓，也是第一次学习记录，所以有问题可以通过邮箱联系我（在我主页）
+
+# 欢迎多多评论

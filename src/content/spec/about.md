@@ -12,13 +12,13 @@
 
 ::github{repo="coffee-code1/fuwari"}
 
-## 项目
+## 项目，可以点一个小星星嘛
 
-### 1. 外卖系统
+### 1. 餐饮管理平台
 
 ::github{repo="coffee-code1/sky-take-out"}
 
-### 2. 点评平台
+### 2. 校园点评平台
 
 ::github{repo="coffee-code1/hmdp"}
 
