@@ -19,5 +19,73 @@ const currentYear = new Date().getFullYear();
         <a class="transition link text-[var(--primary)] font-medium" target="_blank" href="https://github.com/saicaca/fuwari">Fuwari</a>
         <br>
         <a class="transition link text-[var(--primary)] font-medium mt-1 inline-block" target="_blank" rel="noopener noreferrer" href="https://beian.miit.gov.cn/">豫ICP备2026029393号</a>
+        <br>
+        总访问量
+        <span id="vercount_value_site_pv" class="tabular-nums font-medium text-[var(--primary)]">-</span>
+        次&nbsp;·&nbsp;总访客数
+        <span id="vercount_value_site_uv" class="tabular-nums font-medium text-[var(--primary)]">-</span>
+        人
     </div>
 </div>
+
+<script>
+	const VERCOUNT_SRC = "https://events.vercount.one/js";
+
+	// 计数按主机名记账，localhost/127.0.0.1 是全球开发者共享的计数桶，
+	// 本地预览看到的会是一个巨大的假数据，所以本地不请求、不计数。
+	function isLocalPreview() {
+		return (
+			location.hostname === "localhost" ||
+			location.hostname === "127.0.0.1" ||
+			location.hostname === "[::1]" ||
+			location.hostname === "::1" ||
+			location.protocol === "file:"
+		);
+	}
+
+	// 页脚会被渲染两次（桌面版在 main 内、移动版在 main 外），因此页面上有两个同 id 的 span。
+	// Vercount 只认第一个，移动端那份会一直是 "-"，所以把第一个的值同步给其余同 id 的元素。
+	let observers: MutationObserver[] = [];
+	function mirrorDuplicateSpans() {
+		observers.forEach(o => o.disconnect());
+		observers = [];
+		["vercount_value_site_pv", "vercount_value_site_uv"].forEach(id => {
+			const all = document.querySelectorAll(`#${id}`);
+			if (all.length < 2) return;
+			const primary = all[0];
+			const mirrors = Array.from(all).slice(1);
+			const sync = () => mirrors.forEach(el => {
+				el.textContent = primary.textContent;
+			});
+			const observer = new MutationObserver(sync);
+			observer.observe(primary, { childList: true, characterData: true, subtree: true });
+			observers.push(observer);
+			sync();
+		});
+	}
+
+	// Vercount 的脚本每执行一次就上报一次 PV，并把页面上的计数刷新成最新值。
+	// 站内跳转走的是 Swup 无刷新切换，不重新执行脚本就不会计数，所以每次切换都要再拉一次。
+	function loadVercount() {
+		if (isLocalPreview()) return;
+		mirrorDuplicateSpans();
+		document.getElementById("vercount-loader")?.remove();
+		const script = document.createElement("script");
+		script.id = "vercount-loader";
+		script.src = VERCOUNT_SRC;
+		script.async = true;
+		document.head.appendChild(script);
+	}
+
+	loadVercount();
+
+	const setupVercount = () => {
+		window.swup.hooks.on("page:view", loadVercount);
+	};
+
+	if (window.swup) {
+		setupVercount();
+	} else {
+		document.addEventListener("swup:enable", setupVercount);
+	}
+</script>
