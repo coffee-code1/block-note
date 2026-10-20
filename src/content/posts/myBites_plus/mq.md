@@ -110,7 +110,47 @@ void testUpdateByQueryWrapper() {
 4.改：updateById()按主键修改、lambdaUpdate()条件修改
 
 我们只需要使用自定义的**service继承Iservice**，就能拥有mp写好的这些增删改查的方法，由于是接口我们还需要创建一个实现类，我们可以将**自定义的实现类继承IServiceImpl**，这个mp已经帮我们写好了，我们可以直接调用，但是**需要传入Mapper类，以及实体类**<br>
+自定义实体类：
+~~~java
+@Data
+@TableName("t_user")
+public class User {
+    private Long id;
+    private String username;
+    private Integer age;
+}
+~~~
+Mapper接口，继承BaseMapper，提供了简单的CRUD：
+~~~java
+// BaseMapper：MP的数据层接口，自带单表CRUD
+public interface UserMapper extends BaseMapper<User> {
+}
+~~~
+自定义Service继承IService，获取mp提供好的方法
+~~~JAVA
+// IService<T> 泛型是【实体类】
+public interface UserService extends IService<User> {
+    // 这里可以写自己额外的业务方法
+    List<User> listByAge(Integer age);
+}
+~~~
+实现自定义的Service接口，同时继承IServiceImpl，获得mp写好的方法实现
+~~~java
+// ServiceImpl<M,T>
+// M：你的Mapper，T：实体类
+@Service
+public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
+    // 不需要自己写save/getById这些，ServiceImpl内部已经实现好了！
+    // 只需要实现自己在UserService里新增的业务方法
+    @Override
+    public List<User> listByAge(Integer age) {
+        return this.lambdaQuery()
+                .eq(User::getAge, age)
+                .list();
+    }
+}
+~~~
 ## 6.1 简单的增删改查业务逻辑
 
 ~~~java
