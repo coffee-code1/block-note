@@ -711,7 +711,7 @@ GET /items/_search
 
 关键在于三个参数：1.聚合名称 2.聚合字段  3.返回的个数
 
-~~~JAVA
+~~~java
   // 1.创建Request
     SearchRequest request = new SearchRequest("items");
     // 2.准备请求参数
@@ -727,7 +727,7 @@ GET /items/_search
 
 解析聚合结果：
 
-~~~JAVA
+~~~java
  // 4.发送请求
     SearchResponse response = client.search(request, RequestOptions.DEFAULT);
     // 5.解析聚合结果
@@ -755,7 +755,7 @@ GET /items/_search
 
 发送请求：
 
-~~~JAVA
+~~~java
 SearchRequest request = new SearchRequest("items");
 SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
 sourceBuilder.query(QueryBuilders.matchAllQuery());
@@ -803,7 +803,7 @@ SearchResponse response = client.search(request, RequestOptions.DEFAULT);
 
 所以我们在获得bucket后还需要在获取内部一层才能得到里面的数据：
 
-~~~JAVA
+~~~java
 // 获取顶层聚合对象，拿到外层brand_agg
 Aggregations aggregations = response.getAggregations();
 Terms brandTerms = aggregations.get("brand_agg");
@@ -815,7 +815,7 @@ for (Terms.Bucket bucket : brandTerms.getBuckets()) {
     // 该品牌文档数量
     long docCount = bucket.getDocCount();
 
-    // ✅重点：子聚合在bucket里面！不是顶层！
+    // 子聚合在bucket里面！不是顶层！
     Aggregations subAggs = bucket.getAggregations();
     Stats statsMetric = subAggs.get("stats_meric");
 

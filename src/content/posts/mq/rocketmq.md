@@ -189,8 +189,103 @@ docker logs --since 10m rmqbroker
 ~~~
 通过docker ps我们就能看到当前正在运行的容器：
 ![运行的容器](2.png)
+
+>[!TIP]
+需要注意的是我们这里容器启动是由顺序的,`docker start rmqnamesrv  rmqbroker  rmqproxy rmq-dashboard`
 ## 3.5 访问dashboard
 dashboard默认是8080端口，但是在项目中8080会被别的占用，所以我们可以在启动时修改它的端口号为8088
 
 成功后:
->[success](3.png)
+![success](3.png)
+# 四、Proxy介绍（5.x版本新特性）
+等于是一个中间处理件，老版本是生产者发送消息后到达nameserver，再到broker，而现在是生产者发送的消息先到proxy（8081）再到nameserver，然后到broker。<br>
+
+## 4.1 Proxy 核心作用：
+
+1. **协议转换**
+   - 对外：提供 gRPC（8081），标准化协议，Go/Python/C++ 等多语言 SDK 友好
+   - 对内：转成 RocketMQ 原生 Remoting 协议和 Broker、NameServer 通信
+2. **无状态，可独立弹性扩容**（云原生最大价值）
+Broker 是有状态（存消息，扩容麻烦）；Proxy 无状态，流量暴涨的时候直接多加几个 Proxy 实例扛连接、鉴权、路由请求，**不用动存储 Broker**。
+3. **统一接入层，收拢权限、限流、监控**
+ACL 权限、流量限流、TLS 加密、请求埋点都放在 Proxy 这一层，Broker 专心做消息存储，职责拆分（存算分离）。
+4. **兼容两种模式**
+
+- Local 模式：Proxy 和 Broker 同进程启动（你现在 Docker 一键部署就是这种，简单，适合学习）
+- Cluster 模式：Proxy 独立集群部署，生产大规模用
+
+# 五、快速入门
+## 5.1 依赖引入
+由于我们使用的是5.2.0版本所以会引入对应的版本，而且与4.x版本有所不同
+~~~xml
+ <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-client-java</artifactId>
+            <version>5.2.0</version>
+        </dependency>
+~~~
+## 5.2 基本代码
+### 5.2.1 生产者
+~~~java
+  //这里是proxy的连接，不是nameserver
+        String endpoint =  "172.17.96.158:8081";
+        String topic = "Test-topic";
+
+        //创建生产者，老版是 new DefaultMQProducer
+        ClientServiceProvider clientServiceProvider = ClientServiceProvider.loadService();
+        //设置连接proxy的地址，老版直接就是producer.setNamesrvAddr("localhost:9876");连接nameserver
+        ClientConfiguration clientConfiguration = ClientConfiguration.newBuilder().setEndpoints(endpoint).build();
+
+        // 初始化生产者
+        Producer producer = clientServiceProvider.newProducerBuilder()
+                .setTopics(topic)
+                .setClientConfiguration(clientConfiguration)
+                .build();//这里一build后就会自动启动，不用像之前的老版本一样start（）
+
+        // 构造消息
+        Message message = clientServiceProvider.newMessageBuilder()
+                .setTopic(topic)//必填项，消息一级分类
+                .setBody("hello rocketmq 5.2.0".getBytes())//这里不管是新版本还是老版都是字节数组
+                .build();
+
+        //新版本返回的SendReceipt与老版本的SendResult功能一样
+        SendReceipt receipt = producer.send(message);
+        System.out.println("msgId:" + receipt.getMessageId());
+
+        producer.close();
+~~~
+由于新版本无法在消息发送时自动创建topic，需要自己手动创建，我们可以引入`rocketmq-admin`进行创建，也可以在dashboard中创建，这里我们暂时选择后者
+![create](4.png)
+
+在idea中执行完代码会显示:
+>msgId:01F0A6545C747D21EC0AEB103E00000000
+
+对应的我们直接在dashboard上通过messageid查询:
+![result](5.png)
+### 5.2.2 消费者
+~~~java
+  String endpoint = "127.0.0.1:8081";
+        String topic = "Test";
+
+        ClientServiceProvider clientServiceProvider = ClientServiceProvider.loadService();
+        ClientConfiguration clientConfiguration = ClientConfiguration.newBuilder().setEndpoints(endpoint).build();
+
+        FilterExpression filterExpression = new FilterExpression("*", FilterExpressionType.TAG);
+
+        PushConsumer consumer = clientServiceProvider
+                .newPushConsumerBuilder()
+                .setConsumerGroup("TestConsumerGroup2")
+                .setClientConfiguration(clientConfiguration)
+                .setSubscriptionExpressions(Collections.singletonMap(topic, filterExpression))
+                .setMessageListener(messageView -> {
+                    System.out.println("Received message: " + messageView.getBody().toString());
+                    return ConsumeResult.SUCCESS;
+                })
+                .setConsumptionThreadCount(10) // ✅ 修正方法名
+                .build();
+
+        System.out.println("消费者启动，等待消息...");
+        System.in.read();
+        consumer.close();
+~~~
+在dashboard上我们就能看到我们注册的消费者组了，并且回调方法中就能接收到信息
