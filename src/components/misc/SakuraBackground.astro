@@ -8,7 +8,7 @@
  */
 
 // ===== 常调参数：数量、大小、速度、透明度与摇摆幅度都在这里 =====
-const COUNT = 40; // 总粒子数；美食与金币主题在 CSS 中进一步减少显示数量
+const COUNT = 50; // 总粒子数；美食与金币主题在 CSS 中进一步减少显示数量
 const START_TOP = "0rem";
 
 function rand(i: number, salt: number): number {
@@ -18,17 +18,17 @@ function rand(i: number, salt: number): number {
 
 const particles = Array.from({ length: COUNT }, (_, i) => {
 	const depth = rand(i, 8);
-	const dur = 16 + (1 - depth) * 18 + rand(i, 3) * 8; // 下落秒数：数值越大越慢
+	const dur = 8 + (1 - depth) * 1 + rand(i, 3) * 8; // 下落秒数：数值越大越慢
 
 	return {
 		x: 2 + rand(i, 1) * 94, // 水平分布范围（%）
-		size: 0.5 + depth * 1.1, // 大小系数：约 0.5～1.6
+		size: 0.5 + depth * 2.0, // 大小系数：约 0.5～1.6
 		dur,
 		delay: -rand(i, 4) * dur,
 		drift: (rand(i, 5) - 0.5) * 120, // 整段下落的横向漂移（px）
 		rotation: -45 + rand(i, 7) * 90,
 		spin: 100 + rand(i, 6) * 260,
-		opacity: 0.24 + depth * 0.46, // 基础透明度：约 0.24～0.70
+		opacity: 100 + depth * 0.46, // 基础透明度：约 0.24～0.70
 		sway: 14 + rand(i, 9) * 30, // 左右摇摆幅度（px）
 	};
 });
