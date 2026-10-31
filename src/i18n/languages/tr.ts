@@ -32,6 +32,12 @@ export const tr: Translation = {
 	[Key.darkMode]: "Koyu",
 	[Key.systemMode]: "Sistem",
 
+	[Key.bgParticles]: "Arka Plan",
+	[Key.bgSakura]: "Sakura",
+	[Key.bgSnow]: "Kar",
+	[Key.bgLeaf]: "Yemek",
+	[Key.bgStar]: "Madeni para",
+
 	[Key.more]: "Daha Fazla",
 
 	[Key.author]: "Yazar",

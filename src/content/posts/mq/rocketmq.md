@@ -748,4 +748,270 @@ public void testBatchConsumer() throws Exception {
 }
 ~~~
 
-# 七、Tag标签
+# 七、Tag标签与Key标识（4.x）
+
+## 7.1 Tag
+
+Tag就是在消息被Topic分类后再进一步进行分类，比如我们有一个OrderTopic,那么我们在服装订单跟帽子订单就可以通过不同的Tag区分给对应的消费者消费，而且对于一些比如时效性高的业务就有必要与正常的业务分开
+
+### 7.1.1 订阅一致性
+
+就是规定同一个消费者组的消费者必须要订阅相同Topic下的相同Tag，否则会出现混乱，信息重复消费
+
+### 7.1.2 生产者实例
+
+~~~java
+@Test
+public void tagProducer() throws Exception {
+    DefaultMQProducer producer = new DefaultMQProducer("tag-producer-group");
+    producer.setNamesrvAddr(MqConstant.NAME_SRV_ADDR);
+    producer.start();
+    Message message = new Message("tagTopic", "vip1", "我是vip1的文章".getBytes());//vip1就是Tag
+    Message message2 = new Message("tagTopic", "vip2", "我是vip2的文章".getBytes());
+    producer.send(message);
+    producer.send(message2);
+    System.out.println("发送成功");
+    producer.shutdown();
+}
+~~~
+
+### 7.1.3 消费者实例
+
+~~~java
+/**
+ * vip1
+ *
+ * @throws Exception
+ */
+@Test
+public void tagConsumer1() throws Exception {
+    DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("tag-consumer-group-a");
+    consumer.setNamesrvAddr(MqConstant.NAME_SRV_ADDR);
+    // 主题，标签（写 * 是所有标签）
+    consumer.subscribe("tagTopic", "vip1");
+    consumer.registerMessageListener(new MessageListenerConcurrently() {
+        @Override
+        public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs, ConsumeConcurrentlyContext context) {
+            System.out.println("我是vip1的消费者，我正在消费消息" + new String(msgs.get(0).getBody()));
+            return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+        }
+    });
+    consumer.start();
+    System.in.read();
+}
+
+
+/**
+ * vip1 || vip2
+ *
+ * @throws Exception
+ */
+@Test
+public void tagConsumer2() throws Exception {
+    DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("tag-consumer-group-b");
+    consumer.setNamesrvAddr(MqConstant.NAME_SRV_ADDR);
+    consumer.subscribe("tagTopic", "vip1 || vip2");
+    consumer.registerMessageListener(new MessageListenerConcurrently() {
+        @Override
+        public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs, ConsumeConcurrentlyContext context) {
+            System.out.println("我是vip2的消费者，我正在消费消息" + new String(msgs.get(0).getBody()));
+            return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+        }
+    });
+    consumer.start();
+    System.in.read();
+}
+~~~
+
+### 7.1.4 使用须知
+
+总结：不同的业务应该使用不同的Topic，如果是相同的业务里面有不同的表现形式，我们要使用tag进行区分，可以从以下几个方面进行判断：
+
+- 1、**消息类型是否一致**：如普通消息、事务消息、定时（延时）消息、顺序消息，不同的消息类型使用不同的 Topic，无法通过 Tag 进行区分
+- 2、**业务是否相关联**：淘宝交易消息、京东物流消息使用不同的 Topic 进行区分；同样是天猫交易消息，电器类订单、女装类订单、化妆品类订单的消息可以用 Tag 进行区分
+- 3、**消息优先级是否一致**：如同样是物流消息，盒马必须小时内送达，天猫超市 24 小时内送达，淘宝物流则相对会慢一些，不同优先级的消息用不同的 Topic 进行区分
+- 4、**消息量级是否相当**：有些业务消息虽然量小但是**实时性要求高**（如生鲜订单），如果跟某些万亿量级的消息使用同一个 Topic，可能会因为过长的等待时间而“饿死”，此时需要将不同量级的消息进行拆分，使用不同的 Topic
+
+总的来说，针对消息分类，您可以选择创建多个 Topic，或者在同一个 Topic 下创建多个 Tag。但通常情况下，不同的 Topic 之间的消息没有必然的联系，而 Tag 则用来区分同一个 Topic 下相互关联的消息，例如全集和子集的关系、流程先后的关系。
+
+## 7.2 Key
+
+这个`key`就是消息的唯一ID，与生产者发送消息生成的`MessageID`类似，但是key是我们自定义的业务上的唯一ID，可以帮助我们解决信息重复消费问题
+
+### 7.2.1 信息消费重复
+
+#### 原因
+
+- 生产者重复投递消息
+- 消费者组扩容，也就是在消费的时候突然增加了消费者组中的消费者个数由于负载均衡会重新分配消费者消费的队列对象就有可能出现信息被重复消费
+
+>[!TIP]
+这里生产者跟broker中是**TCP协议**，也就是**三次握手机制**：
+
+- 生产者先发出要发送消息的信号
+- Broker接受然后返回收到生产者发送的信号
+- 生产者在发送收到了消费者发送的收到信号
+
+### 7.2.1 生产者实例
+
+~~~java
+@Test
+public void keyProducer() throws Exception {
+    DefaultMQProducer producer = new DefaultMQProducer("key-producer-group");
+    producer.setNamesrvAddr(MqConstant.NAME_SRV_ADDR);
+    producer.start();
+    String key = UUID.randomUUID().toString();
+    System.out.println(key);
+    Message message = new Message("keyTopic", "vip1", key, "我是vip1的文章".getBytes());
+    producer.send(message);
+    System.out.println("发送成功");
+    producer.shutdown();
+}
+~~~
+
+### 7.2.2 消费者实例
+
+~~~java
+@Test
+public void keyConsumer() throws Exception {
+    DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("key-consumer-group");
+    consumer.setNamesrvAddr(MqConstant.NAME_SRV_ADDR);
+    consumer.subscribe("keyTopic", "*");
+    consumer.registerMessageListener(new MessageListenerConcurrently() {
+        @Override
+        public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs, ConsumeConcurrentlyContext context) {
+            MessageExt messageExt = msgs.get(0);
+            System.out.println("我是vip1的消费者，我正在消费消息" + new String(messageExt.getBody()));
+            // 获取key
+            System.out.println("我们业务的标识：" + messageExt.getKeys());
+            return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+        }
+    });
+    consumer.start();
+    System.in.read();
+}
+~~~
+
+# 八、死信与重试机制
+
+## 8.1 重试机制
+
+### 8.1.1 生产者重试
+
+~~~java
+// 失败的情况重发3次（同步）
+producer.setRetryTimesWhenSendFailed(3);
+// 失败的情况重发3次（异步）
+producer.setRetryTimesWhenSendAsyncFailed(3);
+// 消息在1S内没有发送成功，就会重试
+producer.send(msg, 1000);
+~~~
+
+示例：
+
+~~~java
+@Test
+public void retryProducer() throws Exception {
+    DefaultMQProducer producer = new DefaultMQProducer("retry-producer-group");
+    producer.setNamesrvAddr(MqConstant.NAME_SRV_ADDR);
+    producer.start();
+    // 如果发送失败要重试几次（同步），不设置默认值是2
+    producer.setRetryTimesWhenSendFailed(3);
+    // 如果发送失败要重试几次（异步）
+//        producer.setRetryTimesWhenSendAsyncFailed(3);
+    String key = UUID.randomUUID().toString();
+    System.out.println(key);
+    Message message = new Message("retryTopic", "vip1", key, "我是vip666的文章".getBytes());
+    producer.send(message);
+    System.out.println("发送成功");
+    producer.shutdown();
+}
+~~~
+
+### 8.1.2 消费者重试
+
+消费者重试默认是重试16次，并且遵循的重试间隔跟延迟等级的时间是一致的
+
+~~~java
+// 消费失败，重试几次
+consumer.setMaxReconsumeTimes(5);
+~~~
+
+## 8.2 死信消息
+
+如果重试16次或者超过规定次数，该消息就会成为死信消息，将消息放在一个死信主题中去，名称:%DLQ%消费者组名，最后再实现一个消费者去消费死信消息，一般是发邮件发短信通知人工处理、做一些记录，**并且死信队列只有一个**
+
+### 8.2.1 处理死信消息
+
+#### 1.专门为死信队列创建一个消费者
+
+~~~java
+/**
+ * 方案一
+ * 死信队列消费者
+ * @throws Exception
+ */
+@Test
+public void retryDeadConsumer() throws Exception {
+    DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("retry-dead-consumer-group");
+    consumer.setNamesrvAddr(MqConstant.NAME_SRV_ADDR);
+    consumer.subscribe("%DLQ%retry-consumer-group", "*");
+    consumer.registerMessageListener(new MessageListenerConcurrently() {
+        @Override
+        public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs, ConsumeConcurrentlyContext context) {
+            MessageExt messageExt = msgs.get(0);
+            System.out.println(new Date());
+            System.out.println(new String(messageExt.getBody()));
+            System.out.println("记录到特别的位置 文件 mysql 通知人工处理");
+            // 业务报错了 返回null 返回 RECONSUME_LATER 都会重试
+            return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+        }
+    });
+    consumer.start();
+    System.in.read();
+}
+~~~
+
+#### 2.写进日志
+
+~~~java
+/**
+ * 方案二
+ * 重试次数较多，直接做日志记录、通知人工处理
+ * @throws Exception
+ */
+@Test
+public void retryConsumer2() throws Exception {
+    DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("retry-consumer-group");
+    consumer.setNamesrvAddr(MqConstant.NAME_SRV_ADDR);
+    consumer.subscribe("retryTopic", "*");
+    consumer.registerMessageListener(new MessageListenerConcurrently() {
+        @Override
+        public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs, ConsumeConcurrentlyContext context) {
+            MessageExt messageExt = msgs.get(0);
+            System.out.println(new Date());
+            try {
+                // 业务处理，模拟报错
+                handleDb();
+            } catch (Exception e) {
+                // 重试
+                int reconsumeTimes = messageExt.getReconsumeTimes();
+                if (reconsumeTimes >= 3) {
+                    // 重试次数太大，不要重试了
+                    System.out.println("记录到特别的位置 文件 mysql 通知人工处理");
+                    return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+                }
+                return ConsumeConcurrentlyStatus.RECONSUME_LATER;
+            }
+            // 业务报错了 返回null 返回 RECONSUME_LATER 都会重试
+            return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+        }
+    });
+    consumer.start();
+    System.in.read();
+}
+
+private void handleDb() {
+    int i = 10 / 0;
+}
+~~~

@@ -29,6 +29,12 @@ enum I18nKey {
 	darkMode = "darkMode",
 	systemMode = "systemMode",
 
+	bgParticles = "bgParticles",
+	bgSakura = "bgSakura",
+	bgSnow = "bgSnow",
+	bgLeaf = "bgLeaf",
+	bgStar = "bgStar",
+
 	more = "more",
 
 	author = "author",

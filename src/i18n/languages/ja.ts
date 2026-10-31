@@ -32,6 +32,12 @@ export const ja: Translation = {
 	[Key.darkMode]: "ダーク",
 	[Key.systemMode]: "システム",
 
+	[Key.bgParticles]: "背景",
+	[Key.bgSakura]: "桜",
+	[Key.bgSnow]: "雪",
+	[Key.bgLeaf]: "食べ物",
+	[Key.bgStar]: "コイン",
+
 	[Key.more]: "もっと",
 
 	[Key.author]: "作者",

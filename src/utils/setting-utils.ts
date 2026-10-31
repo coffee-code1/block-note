@@ -59,3 +59,23 @@ export function setTheme(theme: LIGHT_DARK_MODE): void {
 export function getStoredTheme(): LIGHT_DARK_MODE {
 	return (localStorage.getItem("theme") as LIGHT_DARK_MODE) || DEFAULT_THEME;
 }
+
+/** 背景粒子主题：sakura（樱花，默认）/ snow（雪花）/ leaf（美食）/ star（金币）；leaf/star 保留旧值兼容设置 */
+export type ParticleTheme = "sakura" | "snow" | "leaf" | "star";
+
+const PARTICLE_KEY = "bg-particles";
+const PARTICLE_THEMES: ParticleTheme[] = ["sakura", "snow", "leaf", "star"];
+
+export function getStoredParticleTheme(): ParticleTheme {
+	const stored = localStorage.getItem(PARTICLE_KEY) as ParticleTheme | null;
+	return stored && PARTICLE_THEMES.includes(stored) ? stored : "sakura";
+}
+
+export function setParticleTheme(theme: ParticleTheme): void {
+	localStorage.setItem(PARTICLE_KEY, theme);
+	applyParticleThemeToDocument(theme);
+}
+
+export function applyParticleThemeToDocument(theme: ParticleTheme): void {
+	document.documentElement.setAttribute("data-bg-particles", theme);
+}

@@ -32,6 +32,12 @@ export const id: Translation = {
 	[Key.darkMode]: "Gelap",
 	[Key.systemMode]: "Sistem",
 
+	[Key.bgParticles]: "Partikel",
+	[Key.bgSakura]: "Sakura",
+	[Key.bgSnow]: "Salju",
+	[Key.bgLeaf]: "Makanan",
+	[Key.bgStar]: "Koin",
+
 	[Key.more]: "Lainnya",
 
 	[Key.author]: "Penulis",

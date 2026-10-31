@@ -32,6 +32,12 @@ export const ko: Translation = {
 	[Key.darkMode]: "어두운 모드",
 	[Key.systemMode]: "시스템 모드",
 
+	[Key.bgParticles]: "배경",
+	[Key.bgSakura]: "벚꽃",
+	[Key.bgSnow]: "눈",
+	[Key.bgLeaf]: "음식",
+	[Key.bgStar]: "코인",
+
 	[Key.more]: "더 보기",
 
 	[Key.author]: "저자",

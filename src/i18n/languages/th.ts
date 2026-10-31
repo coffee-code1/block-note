@@ -32,6 +32,12 @@ export const th: Translation = {
 	[Key.darkMode]: "มืด",
 	[Key.systemMode]: "ตามระบบ",
 
+	[Key.bgParticles]: "พื้นหลัง",
+	[Key.bgSakura]: "ซากุระ",
+	[Key.bgSnow]: "หิมะ",
+	[Key.bgLeaf]: "อาหาร",
+	[Key.bgStar]: "เหรียญ",
+
 	[Key.more]: "ดูเพิ่ม",
 
 	[Key.author]: "ผู้เขียน",

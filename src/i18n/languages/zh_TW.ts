@@ -32,6 +32,12 @@ export const zh_TW: Translation = {
 	[Key.darkMode]: "暗色",
 	[Key.systemMode]: "跟隨系統",
 
+	[Key.bgParticles]: "背景動畫",
+	[Key.bgSakura]: "櫻花",
+	[Key.bgSnow]: "雪花",
+	[Key.bgLeaf]: "美食",
+	[Key.bgStar]: "金幣",
+
 	[Key.more]: "更多",
 
 	[Key.author]: "作者",

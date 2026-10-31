@@ -3,9 +3,24 @@ import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import Icon from "@iconify/svelte";
 import { getDefaultHue, getHue, setHue } from "@utils/setting-utils";
+import { getStoredParticleTheme, setParticleTheme, type ParticleTheme } from "@utils/setting-utils";
 
 let hue = getHue();
 const defaultHue = getDefaultHue();
+
+let particle: ParticleTheme = getStoredParticleTheme();
+
+const particleOptions: { value: ParticleTheme; icon: string; label: string }[] = [
+	{ value: "sakura", icon: "material-symbols:local-florist-outline-rounded", label: i18n(I18nKey.bgSakura) },
+	{ value: "snow", icon: "material-symbols:ac-unit-rounded", label: i18n(I18nKey.bgSnow) },
+	{ value: "leaf", icon: "material-symbols:fastfood-outline-rounded", label: i18n(I18nKey.bgLeaf) },
+	{ value: "star", icon: "material-symbols:paid-outline-rounded", label: i18n(I18nKey.bgStar) },
+];
+
+function chooseParticle(value: ParticleTheme) {
+	particle = value;
+	setParticleTheme(value);
+}
 
 function resetHue() {
 	hue = getDefaultHue();
@@ -40,6 +55,31 @@ $: if (hue || hue === 0) {
     <div class="w-full h-6 px-1 bg-[oklch(0.80_0.10_0)] dark:bg-[oklch(0.70_0.10_0)] rounded select-none">
         <input aria-label={i18n(I18nKey.themeColor)} type="range" min="0" max="360" bind:value={hue}
                class="slider" id="colorSlider" step="5" style="width: 100%">
+    </div>
+
+    <!-- 背景动画：四选一 -->
+    <div class="mt-4">
+        <div class="flex gap-2 font-bold text-base text-neutral-900 dark:text-neutral-100 transition relative ml-3 mb-2
+            before:w-1 before:h-3.5 before:rounded-md before:bg-[var(--primary)]
+            before:absolute before:-left-3 before:top-[0.2rem]">
+            {i18n(I18nKey.bgParticles)}
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            {#each particleOptions as opt (opt.value)}
+                <button
+                    class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition
+                           border border-neutral-200/70 dark:border-neutral-700/50 active:scale-95"
+                    class:bg-[var(--primary)]={particle === opt.value}
+                    class:text-white={particle === opt.value}
+                    class:bg-[var(--btn-regular-bg)]={particle !== opt.value}
+                    class:text-[var(--btn-content)]={particle !== opt.value}
+                    on:click={() => chooseParticle(opt.value)}
+                >
+                    <Icon icon={opt.icon} class="text-[1.1rem]"></Icon>
+                    <span>{opt.label}</span>
+                </button>
+            {/each}
+        </div>
     </div>
 </div>
 

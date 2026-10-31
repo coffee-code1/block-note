@@ -1,107 +1,272 @@
 ---
 /**
- * 背景樱花飘落效果
+ * 可切换的背景粒子：樱花 / 雪花 / 美食 / 金币。
  *
- * 性能设计（重点）：
- * 1. 纯 CSS 动画，零 JavaScript —— 不占用主线程，不监听 scroll / resize。
- * 2. 只动画 transform 与 opacity 两个属性，全程走合成器（compositor），不触发 layout / paint。
- * 3. 刻意不使用 will-change：常驻提升的图层会长期占用显存，反而拖慢整体。
- * 4. 花瓣数量固定，数值由「固定伪随机」在构建期算好，
- *    运行时不做任何计算，也不会因为 SSR / 客户端不一致而抖动。
- * 5. 尊重 prefers-reduced-motion：开启减弱动效的系统直接隐藏该层。
- *
- * 起始高度：只由下面的 START_TOP 控制，与横幅 / 布局常量无关，改它不会影响页面排版。
+ * - 使用内联 SVG data URI，无额外网络请求。
+ * - 固定伪随机与负动画延迟，首屏即有自然分布的粒子。
+ * - 仅动画 transform / opacity，并尊重 prefers-reduced-motion。
  */
 
-// 花瓣数量：越大越好看，也越耗性能。建议 10 ~ 20。
-const COUNT = 50;
-
-// 樱花开始下落的高度（相对视口顶部），改这一个值就够了：
-//   "0rem"   → 从最上方导航栏的上沿开始（默认，全屏飘落）
-//   "4.5rem" → 从导航栏下沿开始（花瓣不盖住导航栏，导航栏高约 72px = 4.5rem）
-//   "20rem"  → 起点更低，只在页面下半部分飘
+// ===== 常调参数：数量、大小、速度、透明度与摇摆幅度都在这里 =====
+const COUNT = 40; // 总粒子数；美食与金币主题在 CSS 中进一步减少显示数量
 const START_TOP = "0rem";
 
-// 固定伪随机：同样的下标永远得到同样的值，保证每次构建输出一致
 function rand(i: number, salt: number): number {
 	const v = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
 	return v - Math.floor(v);
 }
 
-const petals = Array.from({ length: COUNT }, (_, i) => ({
-	x: 2 + rand(i, 1) * 94, // 水平起始位置（%）
-	size: 9 + rand(i, 2) * 7, // 花瓣大小（px）
-	dur: 17 + rand(i, 3) * 13, // 一次完整下落的时长（s）
-	delay: -rand(i, 4) * 30, // 负延迟：页面一打开就有花瓣在半空中，不用等
-	drift: (rand(i, 5) - 0.5) * 130, // 左右飘移距离（px）
-	spin: 200 + rand(i, 6) * 520, // 旋转总角度（deg）
-	opacity: 0.35 + rand(i, 7) * 0.4, // 最高不透明度
-}));
+const particles = Array.from({ length: COUNT }, (_, i) => {
+	const depth = rand(i, 8);
+	const dur = 16 + (1 - depth) * 18 + rand(i, 3) * 8; // 下落秒数：数值越大越慢
+
+	return {
+		x: 2 + rand(i, 1) * 94, // 水平分布范围（%）
+		size: 0.5 + depth * 1.1, // 大小系数：约 0.5～1.6
+		dur,
+		delay: -rand(i, 4) * dur,
+		drift: (rand(i, 5) - 0.5) * 120, // 整段下落的横向漂移（px）
+		rotation: -45 + rand(i, 7) * 90,
+		spin: 100 + rand(i, 6) * 260,
+		opacity: 0.24 + depth * 0.46, // 基础透明度：约 0.24～0.70
+		sway: 14 + rand(i, 9) * 30, // 左右摇摆幅度（px）
+	};
+});
 ---
 
-<div id="sakura-layer" aria-hidden="true" style={`--sakura-start:${START_TOP}`}
-	 class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-	{petals.map((p) => (
+<div
+	id="bg-particles"
+	aria-hidden="true"
+	style={`--particle-start:${START_TOP}`}
+	class="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+>
+	{particles.map((p) => (
 		<span
-			class="sakura-petal"
-			style={`--x:${p.x.toFixed(2)}%;--size:${p.size.toFixed(1)}px;--dur:${p.dur.toFixed(1)}s;--delay:${p.delay.toFixed(1)}s;--drift:${p.drift.toFixed(0)}px;--spin:${p.spin.toFixed(0)}deg;--o:${p.opacity.toFixed(2)}`}
+			class="bg-particle"
+			style={`--x:${p.x.toFixed(2)}%;--size:${p.size.toFixed(2)};--dur:${p.dur.toFixed(1)}s;--delay:${p.delay.toFixed(1)}s;--drift:${p.drift.toFixed(0)}px;--r:${p.rotation.toFixed(0)}deg;--spin:${p.spin.toFixed(0)}deg;--o:${p.opacity.toFixed(2)};--sway:${p.sway.toFixed(0)}px`}
 		></span>
 	))}
 </div>
 
 <style>
-	/* --fall = 花瓣需要走完的垂直距离（容器高度 + 起始时高出容器的 5vh），
-	   保证花瓣正好飘到容器底部时淡出，不会被 overflow 硬生生裁掉。
-	   容器 top 下移多少，--fall 就同步减少多少。 */
-	#sakura-layer {
-		top: var(--sakura-start);
-		--fall: calc(105vh - var(--sakura-start));
-		--sakura-petal-a: oklch(0.88 0.10 355 / 0.80);
-		--sakura-petal-b: oklch(0.81 0.13 340 / 0.70);
-	}
-	:root.dark #sakura-layer {
-		--sakura-petal-a: oklch(0.78 0.11 355 / 0.55);
-		--sakura-petal-b: oklch(0.70 0.13 340 / 0.45);
+	#bg-particles {
+		top: var(--particle-start);
+		--fall: calc(105vh - var(--particle-start));
 	}
 
-	.sakura-petal {
+	.bg-particle {
 		position: absolute;
 		top: 0;
 		left: var(--x);
-		width: var(--size);
-		height: var(--size);
-		margin-top: -5vh;
-		border-radius: 150% 0 150% 0; /* 两瓣圆角 → 花瓣形状 */
-		background: linear-gradient(135deg, var(--sakura-petal-a), var(--sakura-petal-b));
+		width: calc(var(--size) * 14px);
+		height: calc(var(--size) * 17px);
+		margin-top: -7vh;
 		opacity: 0;
-		animation: sakura-fall var(--dur) linear var(--delay) infinite;
+		background-position: center;
+		background-repeat: no-repeat;
+		background-size: contain;
+		will-change: transform, opacity;
 	}
 
-	/* 只改 transform / opacity，交给合成器处理 */
+	/* 樱花：纵向匀速下落，横向轻摆，旋转幅度克制。 */
 	@keyframes sakura-fall {
 		0% {
-			transform: translate3d(0, 0, 0) rotate(0deg);
+			transform: translate3d(0, 0, 0) rotate(var(--r));
 			opacity: 0;
 		}
-		6% {
-			opacity: var(--o);
+		7% { opacity: var(--o); }
+		25% {
+			transform: translate3d(calc(var(--drift) * 0.25 + var(--sway)), calc(var(--fall) * 0.25), 0) rotate(calc(var(--r) + var(--spin) * 0.25));
 		}
 		50% {
-			transform: translate3d(calc(var(--drift) * 0.5), calc(var(--fall) * 0.5), 0) rotate(calc(var(--spin) * 0.5));
+			transform: translate3d(calc(var(--drift) * 0.5 - var(--sway) * 0.75), calc(var(--fall) * 0.5), 0) rotate(calc(var(--r) + var(--spin) * 0.5));
 		}
-		94% {
-			opacity: var(--o);
+		75% {
+			transform: translate3d(calc(var(--drift) * 0.75 + var(--sway) * 0.55), calc(var(--fall) * 0.75), 0) rotate(calc(var(--r) + var(--spin) * 0.75));
 		}
+		93% { opacity: var(--o); }
 		100% {
-			transform: translate3d(var(--drift), var(--fall), 0) rotate(var(--spin));
+			transform: translate3d(var(--drift), var(--fall), 0) rotate(calc(var(--r) + var(--spin)));
 			opacity: 0;
 		}
 	}
 
-	/* 系统开启「减弱动效」时彻底隐藏，不产生任何动画开销 */
-	@media (prefers-reduced-motion: reduce) {
-		#sakura-layer {
-			display: none;
+	/* 雪花：不高速自转，只在小角度内来回偏转。 */
+	@keyframes snow-fall {
+		0% {
+			transform: translate3d(0, 0, 0) rotate(var(--r));
+			opacity: 0;
 		}
+		8% { opacity: calc(var(--o) * 0.9); }
+		30% {
+			transform: translate3d(calc(var(--drift) * 0.3 + var(--sway) * 0.45), calc(var(--fall) * 0.3), 0) rotate(calc(var(--r) + 24deg));
+		}
+		65% {
+			transform: translate3d(calc(var(--drift) * 0.65 - var(--sway) * 0.5), calc(var(--fall) * 0.65), 0) rotate(calc(var(--r) - 18deg));
+		}
+		92% { opacity: calc(var(--o) * 0.9); }
+		100% {
+			transform: translate3d(var(--drift), var(--fall), 0) rotate(calc(var(--r) + 12deg));
+			opacity: 0;
+		}
+	}
+
+	/* 美食只轻摆，不旋转整圈，也不做翻面。 */
+	@keyframes food-fall {
+		0% {
+			transform: translate3d(0, 0, 0) rotate(var(--r));
+			opacity: 0;
+		}
+		7% { opacity: calc(var(--o) * 1.2); }
+		25% {
+			transform: translate3d(calc(var(--drift) * 0.25 + var(--sway)), calc(var(--fall) * 0.25), 0) rotate(calc(var(--r) + 18deg));
+		}
+		50% {
+			transform: translate3d(calc(var(--drift) * 0.5 - var(--sway) * 0.7), calc(var(--fall) * 0.5), 0) rotate(calc(var(--r) - 16deg));
+		}
+		75% {
+			transform: translate3d(calc(var(--drift) * 0.75 + var(--sway) * 0.6), calc(var(--fall) * 0.75), 0) rotate(calc(var(--r) + 12deg));
+		}
+		93% { opacity: calc(var(--o) * 1.2); }
+		100% {
+			transform: translate3d(var(--drift), var(--fall), 0) rotate(var(--r));
+			opacity: 0;
+		}
+	}
+
+	/* 金币与纸币只下落和摇摆，不做翻面。 */
+	@keyframes money-coin-fall {
+		0% {
+			transform: translate3d(0, 0, 0) rotate(var(--r));
+			opacity: 0;
+		}
+		7% { opacity: calc(var(--o) * 1.25); }
+		25% {
+			transform: translate3d(calc(var(--drift) * 0.25 + var(--sway) * 0.6), calc(var(--fall) * 0.25), 0) rotate(calc(var(--r) + var(--spin) * 0.25));
+		}
+		50% {
+			transform: translate3d(calc(var(--drift) * 0.5 - var(--sway) * 0.5), calc(var(--fall) * 0.5), 0) rotate(calc(var(--r) + var(--spin) * 0.5));
+		}
+		75% {
+			transform: translate3d(calc(var(--drift) * 0.75 + var(--sway) * 0.5), calc(var(--fall) * 0.75), 0) rotate(calc(var(--r) + var(--spin) * 0.75));
+		}
+		93% { opacity: calc(var(--o) * 1.25); }
+		100% {
+			transform: translate3d(var(--drift), var(--fall), 0) rotate(calc(var(--r) + var(--spin)));
+			opacity: 0;
+		}
+	}
+	@keyframes money-bill-fall {
+		0% {
+			transform: translate3d(0, 0, 0) rotate(var(--r)) skewX(0deg);
+			opacity: 0;
+		}
+		7% { opacity: calc(var(--o) * 1.2); }
+		30% {
+			transform: translate3d(calc(var(--drift) * 0.3 + var(--sway)), calc(var(--fall) * 0.3), 0) rotate(calc(var(--r) + 24deg)) skewX(-8deg);
+		}
+		65% {
+			transform: translate3d(calc(var(--drift) * 0.65 - var(--sway) * 0.7), calc(var(--fall) * 0.65), 0) rotate(calc(var(--r) - 20deg)) skewX(7deg);
+		}
+		93% { opacity: calc(var(--o) * 1.2); }
+		100% {
+			transform: translate3d(var(--drift), var(--fall), 0) rotate(calc(var(--r) + 12deg)) skewX(0deg);
+			opacity: 0;
+		}
+	}
+
+	/* 单瓣樱花：顶部微缺口、边缘薄粉、中央一条淡叶脉。 */
+	:root[data-bg-particles="sakura"] .bg-particle,
+	:root:not([data-bg-particles]) .bg-particle {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='80%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23fff7fb'/%3E%3Cstop offset='45%25' stop-color='%23ffd5e4'/%3E%3Cstop offset='100%25' stop-color='%23f3a3c1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' d='M16 37C13 31 5 24 5 14C5 8 9 4 13 5C15 5 16 7 16 9C17 7 18 5 20 5C25 4 28 9 27 15C26 24 19 31 16 37Z'/%3E%3Cpath d='M16 34C16 25 15 18 16 10' fill='none' stroke='%23e98eaf' stroke-width='.65' stroke-linecap='round' opacity='.38'/%3E%3Cpath d='M8 12C9 8 12 7 14 9' fill='none' stroke='%23ffffff' stroke-width='1.1' stroke-linecap='round' opacity='.5'/%3E%3C/svg%3E");
+		animation: sakura-fall var(--dur) linear var(--delay) infinite;
+		filter: drop-shadow(0 1px 1px rgba(221, 125, 162, 0.12));
+	}
+
+	/* 雪花使用淡蓝描边，浅色页面也能看清；暗色下转为柔白。 */
+	:root[data-bg-particles="snow"] .bg-particle {
+		width: calc(var(--size) * 14px);
+		height: calc(var(--size) * 14px);
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%23a9c9e5' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 3V29M4.7 9.5L27.3 22.5M4.7 22.5L27.3 9.5'/%3E%3Cpath d='M16 3L13.8 6M16 3L18.2 6M16 29L13.8 26M16 29L18.2 26M16 10L13.5 12.5M16 10L18.5 12.5M16 22L13.5 19.5M16 22L18.5 19.5M4.7 9.5L8.2 9.8M4.7 9.5L6 12.8M27.3 22.5L23.8 22.2M27.3 22.5L26 19.2M9.3 12.1L12.2 11.4M9.3 12.1L10 15M22.7 19.9L19.8 20.6M22.7 19.9L22 17M4.7 22.5L8.2 22.2M4.7 22.5L6 19.2M27.3 9.5L23.8 9.8M27.3 9.5L26 12.8M9.3 19.9L12.2 20.6M9.3 19.9L10 17M22.7 12.1L19.8 11.4M22.7 12.1L22 15'/%3E%3C/g%3E%3Ccircle cx='16' cy='16' r='1.3' fill='%23f5fbff'/%3E%3C/svg%3E");
+		animation: snow-fall var(--dur) linear var(--delay) infinite;
+		filter: drop-shadow(0 0 2px rgba(126, 177, 218, 0.24));
+	}
+	:root.dark[data-bg-particles="snow"] .bg-particle {
+		filter: brightness(1.45) drop-shadow(0 0 2px rgba(197, 224, 248, 0.35));
+	}
+
+	/* 美食主题：8 种内联 SVG 循环出现，保留 leaf 内部值兼容旧设置。 */
+	:root[data-bg-particles="leaf"] .bg-particle {
+		width: calc(var(--size) * 18px);
+		height: calc(var(--size) * 18px);
+		/* 汉堡 */
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M5 13C5.8 7.3 10 5 16 5S26.2 7.3 27 13Z' fill='%23edb65f' stroke='%23ce9147' stroke-width='.8'/%3E%3Cpath d='M6 20H26V23C26 25 24 26 22 26H10C8 26 6 25 6 23Z' fill='%23e7aa55' stroke='%23c78943' stroke-width='.8'/%3E%3Crect x='5' y='16' width='22' height='4' rx='2' fill='%238a513b'/%3E%3Cpath d='M5 15L10 13.8L15 15L21 13.8L27 15L25 17H7Z' fill='%237caf58'/%3E%3Cpath d='M8 16L15 16L12 20Z' fill='%23f3cd53'/%3E%3Cg fill='%23fff0b4'%3E%3Cellipse cx='11' cy='9' rx='.8' ry='.45'/%3E%3Cellipse cx='17' cy='7.8' rx='.8' ry='.45'/%3E%3Cellipse cx='21' cy='10' rx='.8' ry='.45'/%3E%3C/g%3E%3C/svg%3E");
+		animation: food-fall var(--dur) linear var(--delay) infinite;
+		filter: drop-shadow(0 1px 1px rgba(120, 82, 48, 0.14));
+	}
+	/* 披萨 */
+	:root[data-bg-particles="leaf"] .bg-particle:nth-child(8n+2) {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M7 7L27 11L11 28Z' fill='%23f5ce72' stroke='%23d79a4b' stroke-width='.9' stroke-linejoin='round'/%3E%3Cpath d='M6 6C10 3.5 20 5 27 9L26 12C19 8.5 12 7.5 8 9Z' fill='%23dc9a50' stroke='%23c48340' stroke-width='.8'/%3E%3Cg fill='%23d96850'%3E%3Ccircle cx='14' cy='12' r='2.1'/%3E%3Ccircle cx='19' cy='17' r='2'/%3E%3Ccircle cx='12' cy='20' r='1.8'/%3E%3C/g%3E%3Cpath d='M14 15L16 16M17 10L18 11M14 23L15 24' stroke='%237da158' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
+	}
+	/* 甜甜圈 */
+	:root[data-bg-particles="leaf"] .bg-particle:nth-child(8n+3) {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23d99a5b' fill-rule='evenodd' d='M16 3A13 13 0 1 0 16 29A13 13 0 1 0 16 3M16 11A5 5 0 1 1 16 21A5 5 0 1 1 16 11'/%3E%3Cpath fill='%23f3a9bd' fill-rule='evenodd' d='M16 4A12 12 0 1 0 16 28A12 12 0 1 0 16 4M16 10A6 6 0 1 1 16 22A6 6 0 1 1 16 10'/%3E%3Cg stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M9 10L11 11M20 8L21 10M23 17L25 16M9 21L11 20M18 24L19 22' stroke='%23fff0a5'/%3E%3Cpath d='M14 7L15 9M24 12L22 13M8 16L10 16' stroke='%23a7d7c5'/%3E%3C/g%3E%3C/svg%3E");
+	}
+	/* 纸杯蛋糕 */
+	:root[data-bg-particles="leaf"] .bg-particle:nth-child(8n+4) {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M8 15H24L22 28H10Z' fill='%23d99a73' stroke='%23b9795e' stroke-width='.8'/%3E%3Cpath d='M12 17L13 26M16 17V26M20 17L19 26' stroke='%23f2c2a0' stroke-width='1'/%3E%3Cpath d='M8 16C5.5 14 7 11 10 11C8.5 7 12 5 15 7C16 3 21 4 21 8C25 7 27 11 24 13C27 16 23 18 20 17H11C9 18 7 17 8 16Z' fill='%23f3c3d3' stroke='%23dc9eb5' stroke-width='.7'/%3E%3Ccircle cx='17' cy='5' r='2' fill='%23d96868'/%3E%3C/svg%3E");
+	}
+	/* 三文鱼寿司 */
+	:root[data-bg-particles="leaf"] .bg-particle:nth-child(8n+5) {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='15' width='20' height='12' rx='5' fill='%23f5f1e7' stroke='%23c8c1b2' stroke-width='.8'/%3E%3Cpath d='M5 14C6 9 10 6 16 6C22 6 26 9 27 14L24 18H8Z' fill='%23ed936f' stroke='%23ce7558' stroke-width='.8'/%3E%3Cpath d='M10 8L13 16M16 6L19 16M22 8L24 15' stroke='%23ffc0a4' stroke-width='1.4'/%3E%3Cg fill='%23d9d2c3'%3E%3Ccircle cx='11' cy='21' r='.6'/%3E%3Ccircle cx='17' cy='23' r='.6'/%3E%3Ccircle cx='22' cy='20' r='.6'/%3E%3C/g%3E%3C/svg%3E");
+	}
+	/* 草莓 */
+	:root[data-bg-particles="leaf"] .bg-particle:nth-child(8n+6) {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M7 12C7 8 12 7 16 9C20 7 25 8 25 12C25 20 19 27 16 29C13 27 7 20 7 12Z' fill='%23e97070' stroke='%23c9575c' stroke-width='.8'/%3E%3Cpath d='M16 10L12 5L16 7L20 4L19 9L25 8L21 12H11L7 8L13 9Z' fill='%2378a957'/%3E%3Cg fill='%23ffe5a0'%3E%3Cellipse cx='12' cy='15' rx='.65' ry='1'/%3E%3Cellipse cx='19' cy='14' rx='.65' ry='1'/%3E%3Cellipse cx='16' cy='20' rx='.65' ry='1'/%3E%3Cellipse cx='12' cy='21' rx='.55' ry='.85'/%3E%3Cellipse cx='20' cy='19' rx='.55' ry='.85'/%3E%3C/g%3E%3C/svg%3E");
+	}
+	/* 珍珠奶茶 */
+	:root[data-bg-particles="leaf"] .bg-particle:nth-child(8n+7) {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M18 3L16 13' stroke='%23d88984' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M8 10H25L22 28H11Z' fill='%23e8c9a5' stroke='%23b99879' stroke-width='.9' stroke-linejoin='round'/%3E%3Cpath d='M9 15H24L22 27H11Z' fill='%23c99c72' opacity='.75'/%3E%3Cpath d='M7 9H26V12H7Z' fill='%23f1e4d1' stroke='%23b99879' stroke-width='.8'/%3E%3Cg fill='%23634f46'%3E%3Ccircle cx='14' cy='23' r='1.5'/%3E%3Ccircle cx='19' cy='24' r='1.5'/%3E%3Ccircle cx='17' cy='20' r='1.4'/%3E%3Ccircle cx='21' cy='20' r='1.2'/%3E%3C/g%3E%3C/svg%3E");
+	}
+	/* 可颂 */
+	:root[data-bg-particles="leaf"] .bg-particle:nth-child(8n) {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 20C5 12 10 6 16 6C22 6 27 12 28 20L24 25L19 21L16 26L13 21L8 25Z' fill='%23e5ad5f' stroke='%23c38845' stroke-width='.9' stroke-linejoin='round'/%3E%3Cpath d='M9 11L13 21M16 7V22M23 11L19 21' fill='none' stroke='%23f5cf8a' stroke-width='2'/%3E%3Cpath d='M5 19L9 18M27 19L23 18M13 22L16 20L19 22' fill='none' stroke='%23bd8141' stroke-width='.8'/%3E%3C/svg%3E");
+	}
+	/* 美食图案较丰富，使用前 20 个粒子并保证 8 种样式都会出现。 */
+	:root[data-bg-particles="leaf"] .bg-particle:nth-child(n+21) {
+		display: none;
+	}
+
+	/* 金币 + 绿色纸币：保留 star 作为内部值，兼容已保存的访客设置。 */
+	:root[data-bg-particles="star"] .bg-particle {
+		width: calc(var(--size) * 17px);
+		height: calc(var(--size) * 17px);
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3CradialGradient id='g' cx='35%25' cy='28%25' r='72%25'%3E%3Cstop offset='0%25' stop-color='%23fff3a6'/%3E%3Cstop offset='55%25' stop-color='%23ffd66b'/%3E%3Cstop offset='100%25' stop-color='%23efb33e'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='14' fill='url(%23g)' stroke='%23eab13f' stroke-width='1.2'/%3E%3Ccircle cx='16' cy='16' r='11.2' fill='none' stroke='%23ffe898' stroke-width='1' opacity='.8'/%3E%3Cpath d='M11 10.5C13 7.5 18 6.5 21 9' fill='none' stroke='%23fff8c9' stroke-width='1.2' stroke-linecap='round' opacity='.7'/%3E%3Ctext x='16' y='21.5' text-anchor='middle' font-family='Arial,sans-serif' font-size='17' font-weight='700' fill='%23dca52f'%3E$%3C/text%3E%3C/svg%3E");
+		animation: money-coin-fall var(--dur) linear var(--delay) infinite;
+		filter: drop-shadow(0 2px 2px rgba(183, 130, 34, 0.16));
+	}
+	:root[data-bg-particles="star"] .bg-particle:nth-child(3n) {
+		width: calc(var(--size) * 20px);
+		height: calc(var(--size) * 12px);
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 24'%3E%3Crect x='3.5' y='4.5' width='35' height='17' rx='2' fill='%23c7ddb9' stroke='%237da379' stroke-width='1'/%3E%3Crect x='1.5' y='2.5' width='35' height='17' rx='2' fill='%23edf6df' stroke='%237aa276' stroke-width='1.2'/%3E%3Crect x='5' y='5.5' width='28' height='11' rx='1' fill='none' stroke='%23a4bf94' stroke-width='.8'/%3E%3Cellipse cx='19' cy='11' rx='4.3' ry='4' fill='%23d2e5c2' stroke='%2387aa7b' stroke-width='.8'/%3E%3Cpath d='M19 8V14M20.5 9C20 8.2 17.5 8.3 17.5 9.5C17.5 11 20.7 10.5 20.7 12.2C20.7 13.6 18 13.8 17.2 12.8' fill='none' stroke='%236f966a' stroke-width='.75' stroke-linecap='round'/%3E%3Cpath d='M6.5 8V6.5H8M30 15.5H31.5V14' fill='none' stroke='%237da379' stroke-width='.8' stroke-linecap='round'/%3E%3C/svg%3E");
+		animation-name: money-bill-fall;
+		filter: drop-shadow(0 1px 1px rgba(71, 112, 66, 0.14));
+	}
+	/* 金币图案更大，数量减半，避免满屏拥挤。 */
+	:root[data-bg-particles="star"] .bg-particle:nth-child(2n) {
+		display: none;
+	}
+	:root.dark[data-bg-particles="star"] .bg-particle {
+		filter: brightness(0.92);
+	}
+
+	:root.dark[data-bg-particles="sakura"] .bg-particle,
+	:root.dark:not([data-bg-particles]) .bg-particle,
+	:root.dark[data-bg-particles="leaf"] .bg-particle {
+		filter: brightness(0.88);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#bg-particles { display: none; }
 	}
 </style>

@@ -32,6 +32,12 @@ export const vi: Translation = {
 	[Key.darkMode]: "Tối",
 	[Key.systemMode]: "Hệ thống",
 
+	[Key.bgParticles]: "Nền",
+	[Key.bgSakura]: "Hoa anh đào",
+	[Key.bgSnow]: "Tuyết",
+	[Key.bgLeaf]: "Đồ ăn",
+	[Key.bgStar]: "Xu",
+
 	[Key.more]: "Thêm",
 
 	[Key.author]: "Tác giả",

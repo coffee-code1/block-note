@@ -32,6 +32,12 @@ export const es: Translation = {
 	[Key.darkMode]: "Oscuro",
 	[Key.systemMode]: "Sistema",
 
+	[Key.bgParticles]: "Particles",
+	[Key.bgSakura]: "Sakura",
+	[Key.bgSnow]: "Nieve",
+	[Key.bgLeaf]: "Comida",
+	[Key.bgStar]: "Monedas",
+
 	[Key.more]: "Más",
 
 	[Key.author]: "Autor",

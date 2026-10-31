@@ -5,13 +5,12 @@ import { url } from "../utils/url-utils";
 
 const currentYear = new Date().getFullYear();
 ---
-
 <!--<div class="border-t border-[var(&#45;&#45;primary)] mx-16 border-dashed py-8 max-w-[var(&#45;&#45;page-width)] flex flex-col items-center justify-center px-6">-->
 <div class="transition border-t border-black/10 dark:border-white/15 my-10 border-dashed mx-32"></div>
 <!--<div class="transition bg-[oklch(92%_0.01_var(&#45;&#45;hue))] dark:bg-black rounded-2xl py-8 mt-4 mb-8 flex flex-col items-center justify-center px-6">-->
 <div class="transition border-dashed border-[oklch(85%_0.01_var(--hue))] dark:border-white/15 rounded-2xl mb-12 flex flex-col items-center justify-center px-6">
     <div class="transition text-50 text-sm text-center">
-        &copy; <span id="copyright-year">{currentYear}</span> {profileConfig.name}. All Rights Reserved. /
+        &copy; <span id="copyright-year">{currentYear}</span> <a class="transition link text-[var(--primary)] font-medium" target="_blank" href="http://bittermelon.click/about/">{profileConfig.name}</a>. All Rights Reserved. /
         <a class="transition link text-[var(--primary)] font-medium" target="_blank" href={url('rss.xml')}>RSS</a> /
         <a class="transition link text-[var(--primary)] font-medium" target="_blank" href={url('sitemap-index.xml')}>Sitemap</a><br>
         Powered by
@@ -20,6 +19,7 @@ const currentYear = new Date().getFullYear();
         <br>
         <a class="transition link text-[var(--primary)] font-medium mt-1 inline-block" target="_blank" rel="noopener noreferrer" href="https://beian.miit.gov.cn/">豫ICP备2026029393号</a>
         <br>
+		本站内容部分借鉴网络上的资源，如果侵权请告知站主及时删除<br>
         总访问量
         <span id="vercount_value_site_pv" class="tabular-nums font-medium text-[var(--primary)]">-</span>
         次&nbsp;·&nbsp;总访客数
