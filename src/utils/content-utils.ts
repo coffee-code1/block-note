@@ -96,24 +96,51 @@ export type SiteStats = {
 	postCount: number;
 	tagCount: number;
 	wordCount: number;
+	categoryCount: number;
+	firstActive: Date | null;
+	lastActive: Date | null;
 };
 
-/** 站点统计：文章数、标签数、总字数。全部在构建期算好，运行时零开销。 */
+/** 站点统计：文章数、标签数、分类数、总字数、最早/最后活跃时间。全部在构建期算好，运行时零开销。 */
 export async function getSiteStats(): Promise<SiteStats> {
 	const allBlogPosts = await getCollection<"posts">("posts", ({ data }) => {
 		return import.meta.env.PROD ? data.draft !== true : true;
 	});
 
 	const tagSet = new Set<string>();
+	const categorySet = new Set<string>();
 	let wordCount = 0;
+	let firstActive: Date | null = null;
+	let lastActive: Date | null = null;
+
+	// 忽略未来日期（置顶占位，如 2099-12-30）
+	const now = new Date();
+	now.setHours(0, 0, 0, 0);
+
 	allBlogPosts.forEach((post) => {
 		post.data.tags.forEach((tag) => {
 			tagSet.add(tag.trim());
 		});
+		if (post.data.category) {
+			categorySet.add(String(post.data.category).trim());
+		}
 		wordCount += countWords(post.body ?? "");
+
+		const d = post.data.published ?? post.data.updated;
+		if (d instanceof Date && d <= now) {
+			if (!firstActive || d < firstActive) firstActive = d;
+			if (!lastActive || d > lastActive) lastActive = d;
+		}
 	});
 
-	return { postCount: allBlogPosts.length, tagCount: tagSet.size, wordCount };
+	return {
+		postCount: allBlogPosts.length,
+		tagCount: tagSet.size,
+		categoryCount: categorySet.size,
+		wordCount,
+		firstActive,
+		lastActive,
+	};
 }
 
 export type Category = {

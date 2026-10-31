@@ -75,11 +75,15 @@
         @apply outline-none ring-2 ring-[var(--primary)] bg-[var(--toc-btn-hover)];
     }
 
-    /* 右侧目录栏：默认隐藏，xl（1280px）以上且有目录内容时才作为第三列显示 */
+    /* 右侧第三列：默认隐藏，xl（1280px）以上才显示。
+       文章页显示目录 TOC，非文章页显示日历热力 + 站点统计，由脚本切换内部两块。 */
     .toc-column {
         display: none;
     }
     @media (min-width: 1280px) {
+        #right-panel {
+            display: block;
+        }
         .toc-column.toc-column-visible {
             display: block;
         }
@@ -175,7 +179,7 @@
 
 /* 打印 / 导出 PDF：只保留正文，链接附带地址，避免代码块和图片被切断 */
 @media print {
-    #navbar, #top-row, #navbar-wrapper, #banner-wrapper, #sidebar, #toc-wrapper,
+    #navbar, #top-row, #navbar-wrapper, #banner-wrapper, #sidebar, #toc-wrapper, #right-panel,
     #reading-progress, #click-effect-layer, #page-bg-glow, #page-height-extend,
     .back-to-top-wrapper, .giscus, footer, .footer, .pagination, .license-container,
     #display-setting, #nav-menu-panel, .float-panel {

@@ -747,3 +747,5 @@ public void testBatchConsumer() throws Exception {
     System.in.read();
 }
 ~~~
+
+# 七、Tag标签

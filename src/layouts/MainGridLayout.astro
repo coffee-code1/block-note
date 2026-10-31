@@ -4,6 +4,7 @@ import Footer from "@components/Footer.astro";
 import BannerSlogan from "@components/misc/BannerSlogan.astro";
 import Navbar from "@components/Navbar.astro";
 import SideBar from "@components/widget/SideBar.astro";
+import RightSidebar from "@components/widget/RightSidebar.astro";
 import type { MarkdownHeading } from "astro";
 import { Icon } from "astro-icon/components";
 import ImageWrapper from "../components/misc/ImageWrapper.astro";
@@ -41,8 +42,8 @@ const mainPanelTop = siteConfig.banner.enable
 	? `calc(${BANNER_HEIGHT}vh - ${MAIN_PANEL_OVERLAPS_BANNER_HEIGHT}rem)`
 	: "5.5rem";
 
-// 文章页（有标题数据）才在主栅格中开辟右侧目录栏；窄屏（< xl）不显示
-const hasTOC = siteConfig.toc.enable && headings.length > 0;
+// 右侧第三列：文章页显示目录 TOC，非文章页显示日历热力 + 站点统计。
+// 第三列在 xl（1280px）以上始终开启，内部两块由脚本按页面类型切换。
 ---
 
 <Layout title={title} banner={banner} description={description} lang={lang} setOGTypeArticle={setOGTypeArticle}>
@@ -71,9 +72,9 @@ const hasTOC = siteConfig.toc.enable && headings.length > 0;
 <div class="absolute w-full z-30 pointer-events-none" style={`top: ${mainPanelTop}`}>
     <!-- The pointer-events-none here prevent blocking the click event of the TOC -->
     <div class="relative max-w-[var(--page-width)] mx-auto pointer-events-auto">
-        <!-- 有目录时（文章页）在 xl 以上拆出右侧第三列：左侧栏 17.5rem | 正文 auto | 目录 13rem -->
+        <!-- 右侧第三列始终开启：文章页放目录，非文章页放日历热力 + 站点统计 -->
         <div id="main-grid" class:list={["transition duration-700 w-full left-0 right-0 grid grid-cols-[17.5rem_auto] grid-rows-[auto_1fr_auto] lg:grid-rows-[auto] mx-auto gap-5 px-0 md:px-4",
-            {"xl:grid-cols-[17.5rem_auto_13rem]": hasTOC}]}
+            {"xl:grid-cols-[17.5rem_auto_13rem]": true}]}
         >
             <!-- Banner image credit -->
             {hasBannerCredit && <a href={siteConfig.banner.credit.url} id="banner-credit" target="_blank" rel="noopener" aria-label="Visit image source"
@@ -102,19 +103,29 @@ const hasTOC = siteConfig.toc.enable && headings.length > 0;
                 </div>
             </main>
 
-            <!-- 右侧目录栏：xl（1280px）以上为第三列并 sticky 吸附，xl 以下完全不显示（移动端/平板） -->
-            {siteConfig.toc.enable && <div id="toc-wrapper" class:list={["toc-column onload-animation",
-                {"toc-column-visible": hasTOC, "toc-hide": siteConfig.banner.enable}]}>
-                <div class="sticky top-[5.5rem]">
-                    <div class="card-base p-2">
-                        <div id="toc-inner-wrapper" data-toc-scroll class="relative max-h-[calc(100vh_-_13rem)] overflow-y-auto overflow-x-hidden hide-scrollbar">
-                            <div id="toc" class="w-full h-full transition-swup-fade py-1">
-                                <TOC headings={headings}></TOC>
+            <!-- 右侧第三列：文章页显示目录 TOC，非文章页显示日历热力 + 站点统计。
+                 外层 #right-panel 在 xl 以上始终占第三列；内部两块按当前页面切换显示。
+                 注意：不要给 #right-panel 加 onload-animation，否则动画的 transform 会让它成为
+                 sticky 的 containing block，导致内部 sticky 目录无法随视口滚动固定。 -->
+            <div id="right-panel" class="toc-column">
+                <div id="toc-wrapper" class="hidden h-full">
+                    <div class="sticky top-[5.5rem]">
+                        <div class="card-base p-2">
+                            <div id="toc-inner-wrapper" data-toc-scroll class="relative max-h-[calc(100vh_-_13rem)] overflow-y-auto overflow-x-hidden hide-scrollbar">
+                                <div id="toc" class="w-full h-full transition-swup-fade py-1">
+                                    <TOC headings={headings}></TOC>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>}
+
+                <div id="right-sidebar-wrapper" class="hidden h-full">
+                    <div class="sticky top-[5.5rem]">
+                        <RightSidebar></RightSidebar>
+                    </div>
+                </div>
+            </div>
 
             <!-- #toc 必须始终存在，否则 Swup 无法正常工作 -->
             {!siteConfig.toc.enable && <div id="toc" class="hidden"></div>}
@@ -129,19 +140,20 @@ const hasTOC = siteConfig.toc.enable && headings.length > 0;
 </div>
 
 <script>
-// 目录栏始终存在于 DOM（Swup 只替换 #toc 的内容，外层栅格不会重建），
-// 因此需要在每次页面切换后按当前页面是否有目录内容，同步栅格列数与目录栏显示状态。
-const TOC_GRID_CLASS = "xl:grid-cols-[17.5rem_auto_13rem]";
-
+// 右侧第三列始终存在（Swup 只替换 main 和 #toc 的内容，外层栅格不会重建）。
+// 文章页显示目录 TOC，非文章页显示日历热力 + 站点统计，靠脚本在两者间切换。
 function syncTocLayout() {
-    const grid = document.getElementById("main-grid");
     const toc = document.getElementById("toc");
-    const wrapper = document.getElementById("toc-wrapper");
-    if (!grid || !toc) return;
+    const tocWrapper = document.getElementById("toc-wrapper");
+    const rightSidebar = document.getElementById("right-sidebar-wrapper");
+    if (!toc) return;
 
-    const hasTOC = toc.children.length > 0;
-    grid.classList.toggle(TOC_GRID_CLASS, hasTOC);
-    wrapper?.classList.toggle("toc-column-visible", hasTOC);
+    // 判断是否有真实目录：检查 <table-of-contents> 元素是否存在。
+    // 注意不能用 toc.children.length，因为 #toc 里始终有一个 TOC 组件的 <script> 标签，
+    // 会导致非文章页也误判为「有目录」。
+    const hasTOC = !!toc.querySelector("table-of-contents");
+    if (tocWrapper) tocWrapper.classList.toggle("hidden", !hasTOC);
+    if (rightSidebar) rightSidebar.classList.toggle("hidden", hasTOC);
 }
 
 syncTocLayout();

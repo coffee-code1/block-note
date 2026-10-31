@@ -1,23 +1,46 @@
 ---
+import { Icon } from "astro-icon/components";
 import { getSiteStats } from "../../utils/content-utils";
 
 const stats = await getSiteStats();
 
-// 大数字加千分位，避免一长串数字不好读
+// 大数字加千分位
 const format = (n: number) => n.toLocaleString("en-US");
 
+// 用构建时间做「今天」基准，避免客户端时间不一致
+const today = new Date();
+
+const daysSinceLast = stats.lastActive
+	? Math.max(0, Math.floor((today.getTime() - stats.lastActive.getTime()) / 86400000))
+	: null;
+
+const daysRunning = stats.firstActive
+	? Math.max(1, Math.floor((today.getTime() - stats.firstActive.getTime()) / 86400000))
+	: 1;
+
 const items = [
-	{ value: format(stats.postCount), unit: "篇文章" },
-	{ value: format(stats.tagCount), unit: "个标签" },
-	{ value: format(stats.wordCount), unit: "字" },
+	{ icon: "material-symbols:description-outline-rounded", label: "文章", value: format(stats.postCount) },
+	{ icon: "material-symbols:folder-outline-rounded", label: "分类", value: format(stats.categoryCount) },
+	{ icon: "material-symbols:sell-outline", label: "标签", value: format(stats.tagCount) },
+	{ icon: "material-symbols:edit-note-outline-rounded", label: "总字数", value: format(stats.wordCount) },
+	{ icon: "material-symbols:schedule-outline-rounded", label: "运行时长", value: `${daysRunning} 天` },
+	{ icon: "material-symbols:monitoring-rounded", label: "最后活动", value: daysSinceLast === null ? "—" : `${daysSinceLast} 天前` },
 ];
 ---
 
-<div class="card-base flex flex-wrap items-center justify-center gap-x-8 gap-y-2 px-6 py-4 mb-4">
-    {items.map(item => (
-        <div class="flex items-baseline gap-1.5">
-            <span class="text-xl font-bold text-[var(--primary)] tabular-nums">{item.value}</span>
-            <span class="text-50 text-sm">{item.unit}</span>
-        </div>
-    ))}
+<div class="card-base px-5 py-4 mb-4">
+    <div class="font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-4 mb-3
+        before:w-1 before:h-4 before:rounded-md before:bg-[var(--primary)]
+        before:absolute before:left-[-12px] before:top-[5.5px]">站点统计</div>
+    <div class="flex flex-col">
+        {items.map((item, i) => (
+            <div class:list={["flex items-center justify-between py-2", { "border-t border-neutral-200/60 dark:border-neutral-700/40": i > 0 }]}>
+                <div class="flex items-center gap-2.5 text-neutral-500 dark:text-neutral-400 transition">
+                    <Icon name={item.icon} class="text-[1.15rem] text-[var(--primary)]"></Icon>
+                    <span class="text-sm">{item.label}</span>
+                </div>
+                <span class="text-sm font-bold text-neutral-900 dark:text-neutral-100 tabular-nums transition">{item.value}</span>
+            </div>
+        ))}
+    </div>
 </div>

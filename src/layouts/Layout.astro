@@ -353,6 +353,12 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
 	.enable-banner.is-home #sidebar-sticky {
 		@apply top-[calc(1rem_-_var(--banner-height-extend))]
 	}
+	/* 首页 banner 展开时，右侧栏 sticky 同样要用负 top 补偿 translate 的偏移，
+	   否则站点统计卡会粘在错误的位置（滚不到视口顶部）。 */
+	.enable-banner.is-home #right-sidebar-wrapper .sticky,
+	.enable-banner.is-home #toc-wrapper .sticky {
+		@apply top-[calc(5.5rem_-_var(--banner-height-extend))]
+	}
 	.navbar-hidden {
 		@apply opacity-0 -translate-y-16
 	}
