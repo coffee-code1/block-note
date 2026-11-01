@@ -1,7 +1,7 @@
 ---
 title: RocketMQ
 published: 2026-10-18
-updated: 2026-10-21
+updated: 2026-10-23
 description: 带你了解什么是MQ，以及RocketMQ的用法以及原理
 image: ''
 tags: [RocketMQ]

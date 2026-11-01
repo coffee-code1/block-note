@@ -101,7 +101,7 @@ export type SiteStats = {
 	lastActive: Date | null;
 };
 
-/** 站点统计：文章数、标签数、分类数、总字数、最早/最后活跃时间。全部在构建期算好，运行时零开销。 */
+/** 站点统计：文章数、标签数、分类数、总字数、最早/最后活跃时间。起始时间按 published（缺失回退 updated），最后活动取每篇文章 published 与 updated 中较新的一个，并忽略未来日期。全部在构建期算好，运行时零开销。 */
 export async function getSiteStats(): Promise<SiteStats> {
 	const allBlogPosts = await getCollection<"posts">("posts", ({ data }) => {
 		return import.meta.env.PROD ? data.draft !== true : true;
@@ -126,10 +126,21 @@ export async function getSiteStats(): Promise<SiteStats> {
 		}
 		wordCount += countWords(post.body ?? "");
 
-		const d = post.data.published ?? post.data.updated;
-		if (d instanceof Date && d <= now) {
-			if (!firstActive || d < firstActive) firstActive = d;
-			if (!lastActive || d > lastActive) lastActive = d;
+		const isValidDate = (v: unknown): v is Date => v instanceof Date && !Number.isNaN(v.getTime());
+		const validDates = [post.data.published, post.data.updated].filter(isValidDate);
+
+		// 起始时间仍按 published（缺失时回退 updated），保持「运行时长」语义不变
+		const startDate = isValidDate(post.data.published) ? post.data.published : post.data.updated;
+
+		// 最后活动取 published 与 updated 中较新的一个
+		const activityDate =
+			validDates.length > 0 ? new Date(Math.max(...validDates.map((v) => v.getTime()))) : null;
+
+		if (isValidDate(startDate) && startDate <= now) {
+			if (!firstActive || startDate < firstActive) firstActive = startDate;
+		}
+		if (activityDate && activityDate <= now) {
+			if (!lastActive || activityDate > lastActive) lastActive = activityDate;
 		}
 	});
 
