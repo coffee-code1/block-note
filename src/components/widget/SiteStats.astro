@@ -7,24 +7,46 @@ const stats = await getSiteStats();
 // 大数字加千分位
 const format = (n: number) => n.toLocaleString("en-US");
 
-// 用构建时间做「今天」基准，避免客户端时间不一致
-const today = new Date();
+// 按北京时间的“自然日”计算天数，避免服务器时区/客户端时区导致差异
+const beijingDayMs = (d: Date | number) => {
+	const ymd = new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Asia/Shanghai",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).format(new Date(d));
+	return Date.parse(`${ymd}T00:00:00+08:00`);
+};
+const daysBetweenBeijing = (from: Date | number, to: Date | number) =>
+	Math.round((beijingDayMs(to) - beijingDayMs(from)) / 86400000);
 
+const now = new Date();
+
+// 服务端先算一份作为首屏兜底，页面加载后客户端会用当前北京时间再刷新
 const daysSinceLast = stats.lastActive
-	? Math.max(0, Math.floor((today.getTime() - stats.lastActive.getTime()) / 86400000))
+	? Math.max(0, daysBetweenBeijing(stats.lastActive, now))
 	: null;
 
 const daysRunning = stats.firstActive
-	? Math.max(1, Math.floor((today.getTime() - stats.firstActive.getTime()) / 86400000))
+	? Math.max(1, daysBetweenBeijing(stats.firstActive, now))
 	: 1;
 
-const items = [
+const lastActiveMs = stats.lastActive ? stats.lastActive.getTime() : null;
+
+const lastActiveText = (days: number) => (days <= 0 ? "今天" : days === 1 ? "昨天" : `${days} 天前`);
+
+const items: { icon: string; label: string; value: string; id?: string }[] = [
 	{ icon: "material-symbols:description-outline-rounded", label: "文章", value: format(stats.postCount) },
 	{ icon: "material-symbols:folder-outline-rounded", label: "分类", value: format(stats.categoryCount) },
 	{ icon: "material-symbols:sell-outline", label: "标签", value: format(stats.tagCount) },
 	{ icon: "material-symbols:edit-note-outline-rounded", label: "总字数", value: format(stats.wordCount) },
 	{ icon: "material-symbols:schedule-outline-rounded", label: "运行时长", value: `${daysRunning} 天` },
-	{ icon: "material-symbols:monitoring-rounded", label: "最后活动", value: daysSinceLast === null ? "—" : `${daysSinceLast} 天前` },
+	{
+		icon: "material-symbols:monitoring-rounded",
+		label: "最后活动",
+		value: daysSinceLast === null ? "—" : lastActiveText(daysSinceLast),
+		id: "site-last-active",
+	},
 ];
 ---
 
@@ -39,8 +61,38 @@ const items = [
                     <Icon name={item.icon} class="text-[1.15rem] text-[var(--primary)]"></Icon>
                     <span class="text-sm">{item.label}</span>
                 </div>
-                <span class="text-sm font-bold text-neutral-900 dark:text-neutral-100 tabular-nums transition">{item.value}</span>
+                <span
+                    id={item.id}
+                    data-last-active={item.id === "site-last-active" ? String(lastActiveMs ?? "") : undefined}
+                    class="text-sm font-bold text-neutral-900 dark:text-neutral-100 tabular-nums transition">{item.value}</span>
             </div>
         ))}
     </div>
 </div>
+
+<script>
+    // 用“当前北京时间”实时计算最后活动：即使没有重新构建，天数也会随日期变化
+    function updateLastActive() {
+        const el = document.getElementById("site-last-active");
+        if (!el) return;
+
+        const ms = Number(el.dataset.lastActive);
+        if (!Number.isFinite(ms)) return;
+
+        const beijingDay = (t: number) => {
+            const ymd = new Intl.DateTimeFormat("en-CA", {
+                timeZone: "Asia/Shanghai",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+            }).format(new Date(t));
+            return Date.parse(`${ymd}T00:00:00+08:00`);
+        };
+
+        const days = Math.max(0, Math.round((beijingDay(Date.now()) - beijingDay(ms)) / 86400000));
+        el.textContent = days <= 0 ? "今天" : days === 1 ? "昨天" : `${days} 天前`;
+    }
+
+    updateLastActive();
+    document.addEventListener("astro:page-load", updateLastActive);
+</script>

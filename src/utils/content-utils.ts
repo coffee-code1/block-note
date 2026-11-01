@@ -113,9 +113,17 @@ export async function getSiteStats(): Promise<SiteStats> {
 	let firstActive: Date | null = null;
 	let lastActive: Date | null = null;
 
-	// 忽略未来日期（置顶占位，如 2099-12-30）
-	const now = new Date();
-	now.setHours(0, 0, 0, 0);
+	// 统一按北京时间的“自然日”比较，忽略未来日期（置顶占位，如 2099-12-30）
+	const beijingDayMs = (d: Date) => {
+		const ymd = new Intl.DateTimeFormat("en-CA", {
+			timeZone: "Asia/Shanghai",
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).format(d);
+		return Date.parse(`${ymd}T00:00:00+08:00`);
+	};
+	const todayBeijing = beijingDayMs(new Date());
 
 	allBlogPosts.forEach((post) => {
 		post.data.tags.forEach((tag) => {
@@ -136,10 +144,11 @@ export async function getSiteStats(): Promise<SiteStats> {
 		const activityDate =
 			validDates.length > 0 ? new Date(Math.max(...validDates.map((v) => v.getTime()))) : null;
 
-		if (isValidDate(startDate) && startDate <= now) {
+		if (isValidDate(startDate) && beijingDayMs(startDate) <= todayBeijing) {
 			if (!firstActive || startDate < firstActive) firstActive = startDate;
 		}
-		if (activityDate && activityDate <= now) {
+		// 永远取最晚的那个时间：全站最大的 published/updated，且不超过北京时间的今天
+		if (activityDate && beijingDayMs(activityDate) <= todayBeijing) {
 			if (!lastActive || activityDate > lastActive) lastActive = activityDate;
 		}
 	});
