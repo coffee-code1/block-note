@@ -169,3 +169,13 @@ Map<String, Object> result = ChatClient.create(chatModel).prompt()
         .call()
         .entity(new ParameterizedTypeReference<Map<String, Object>>() {});
 ~~~
+
+>[!WARNING]
+不过目前这两种模式都无法指定实现类，<br>
+对于List指定的话我们可以借助`ParameterizedTypeReference`
+
+~~~java
+List<Book> book = chatClient.prompt("请给我推荐几本心理学有关的书")
+                .call().entity(new ParameterizedTypeReference<List<Book>>() {
+                });
+~~~

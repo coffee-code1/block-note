@@ -30,8 +30,7 @@ public class Prompt implements ModelRequest<List<Message>> {
 
 ### message类
 
-`Message` 是接口，代表**一条带角色（role）**的对话单元，对应大模型 Chat 接口里的 `messages` 数组里的一条记录Spring Fra...
-<br>
+`Message` 是接口，代表**一条带角色（role）**的对话单元，对应大模型 Chat 接口里的 `messages` 数组里的一条记录 <br>
 
 1. **SystemMessage**：系统提示，设定 AI 角色、规则、输出格式。对话最前面，优先级最高
 2. **UserMessage**：用户输入，用户提问；支持多模态（图片 + 文字）
@@ -122,8 +121,62 @@ Prompt prompt = promptTemplate.create(Map.of("adjective", adjective, "topic", to
 return chatModel.call(prompt).getResult();
 ~~~
 
+使用chatclient：
+
+~~~java
+@GetMapping("/promptsEngineer6")
+public Flux<String> chat6(@RequestParam(value = "message") String message, HttpServletResponse response) {
+    response.setCharacterEncoding("UTF-8");
+
+    PromptTemplate promptTemplate = new PromptTemplate("请给我推荐几个关于{topic}的开源项目");
+    promptTemplate.add("topic", message);
+
+    return chatClient.prompt(promptTemplate.create(Map.of("topic", message))).system("你是一个专业的的github项目收集人员").stream().content();
+}
+~~~
+
+如果是多个占位符的话：
+
+~~~java
+@GetMapping("/promptsEngineer7")
+public Flux<String> chat7(@RequestParam(value = "message") String message, HttpServletResponse response) {
+    response.setCharacterEncoding("UTF-8");
+
+    HashMap variables = new HashMap();
+    variables.put("language", "Java");
+    variables.put("topic", message);
+    PromptTemplate promptTemplate = PromptTemplate.builder().template("请给我推荐几个关于{topic}的开源项目,要求是和编程语言{language}相关的。").variables(variables).build();
+
+    return chatClient.prompt(promptTemplate.create(Map.of("topic", message))).system("你是一个专业的的github项目收集人员").stream().content();
+}
+~~~
+
 >[!TIP]
 值得注意的是这里的create方法底层先调用了render方法进行字符串渲染，也就是替换占位符，然后再进行create返回prompt
+
+## 4.3 配置文件中的模板
+
+当提示词过于长，我们就会考虑放入配置文件中。这里需要借助`value`注解，注入Resource类对象
+
+~~~java
+@Value("classpath:prompts/system-prompt.st")
+private Resource systemText;
+
+@GetMapping("/chat2")
+public Flux<String> chat2(@RequestParam(value = "message") String message, HttpServletResponse response) {
+    response.setCharacterEncoding("UTF-8");
+
+    HashMap variables = new HashMap();
+    variables.put("language", "Java");
+    variables.put("topic", message);
+    PromptTemplate promptTemplate = PromptTemplate.builder().resource(systemText).variables(variables).build();
+
+    return chatClient.prompt(promptTemplate.create(Map.of("topic", message))).system("你是一个专业的的github项目收集人员").stream().content();
+}
+~~~
+
+>[!TIP]
+这里value注解就是自定义的文件配置类所在的文件路径，然后将文本内容注入到systemText下，之后采取流式输出的方式，注意唯一不同的点在于构造提示词模板是`resource`方法
 
 ## `SystemPromptTemplate`专门为SystemMessage设置的模板类
 
