@@ -1,7 +1,7 @@
 ---
 title: SpringAI-3
 published: 2026-09-11
-updated: 2026-09-11
+updated: 2026-11-20
 description: prompt 提示词的基本用法以及介绍
 image: ''
 tags: [SpringAI]

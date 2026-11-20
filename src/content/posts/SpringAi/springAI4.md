@@ -1,7 +1,7 @@
 ---
 title: SpringAI-4
 published: 2026-09-12
-updated: 2026-09-12
+updated: 2026-11-20
 description: 结构化输出的做法，以及底层原理
 image: ''
 tags: [SpringAI]
