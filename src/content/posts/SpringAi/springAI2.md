@@ -1,7 +1,7 @@
 ---
-title: SpringAI-2
+title: SpringAI-2(Advisor)
 published: 2026-09-11
-updated: 2026-09-11
+updated: 2026-11-21
 description: Advisor  API介绍以及使用
 image: ''
 tags: [SpringAI]
@@ -33,51 +33,130 @@ public interface Advisor extends Ordered {
 
 ### 2.2 两条核心分支接口（同步 / 流式）
 
-#### 同步非流式：`CallAroundAdvisor` extends Advisor
+#### 同步非流式：`Calldvisor` extends Advisor
 
 ~~~java
-AdvisedResponse aroundCall(AdvisedRequest advisedRequest, CallAroundAdvisorChain chain);
-
+public interface CallAdvisor extends Advisor {
+    ChatClientResponse adviseCall(ChatClientRequest chatClientRequest, CallAdvisorChain callAdvisorChain);
+}
 ~~~
 
-- `AdvisedRequest`：**可修改的请求体**（prompt、chatOptions、adviseContext 上下文），unsealed 未提交给模型
-- `CallAroundAdvisorChain`：调用 `chain. nextAroundCall()` 执行链中下一个 Advisor；不调用 next 就阻断请求
+- `ChatClientRequest`：**可修改的请求体**（prompt、chatOptions、adviseContext 上下文），unsealed 未提交给模型
+- `CallAdvisorChain`：调用 `chain. nextCall()` 执行链中下一个 Advisor；不调用 next 就阻断请求
 - 返回 `ChatClientResponse`：模型响应，可修改后返回上游
 
-#### 流式：`StreamAroundAdvisor` extends Advisor
+对于`CallAdvisorChain`：
 
 ~~~java
- Flux<AdvisedResponse> aroundStream(AdvisedRequest advisedRequest, StreamAroundAdvisorChain chain);
+public interface CallAdvisorChain extends AdvisorChain {
+    ChatClientResponse nextCall(ChatClientRequest chatClientRequest);
+
+    List<CallAdvisor> getCallAdvisors();
+
+    CallAdvisorChain copy(CallAdvisor after);
+}
 
 ~~~
 
->[!TIP]
+我们可以发现`nextCall`就是负责调用下一个advisor的：
 
-- 流式返回 `Flux<AdvisedResponse>`，适配大模型流式输出场景
-- `StreamAdvisorChain.nextAroundStream(request)` 继续执行链路
+~~~java
+ public ChatClientResponse nextCall(ChatClientRequest chatClientRequest) {
+        Assert.notNull(chatClientRequest, "the chatClientRequest cannot be null");
+        if (this.callAdvisors.isEmpty()) {
+            throw new IllegalStateException("No CallAdvisors available to execute");
+        } else {
+            CallAdvisor advisor = (CallAdvisor)this.callAdvisors.pop();
+            AdvisorObservationContext observationContext = AdvisorObservationContext.builder().advisorName(advisor.getName()).chatClientRequest(chatClientRequest).order(advisor.getOrder()).build();
+            return (ChatClientResponse)AdvisorObservationDocumentation.AI_ADVISOR.observation(this.observationConvention, DEFAULT_OBSERVATION_CONVENTION, () -> observationContext, this.observationRegistry).observe(() -> {
+                ChatClientResponse chatClientResponse = advisor.adviseCall(chatClientRequest, this);
+                observationContext.setChatClientResponse(chatClientResponse);
+                return chatClientResponse;
+            });
+        }
+    }
+~~~
 
-注意的是以上都是新版本（1.0+）的版本，旧版本有所差别
+>[!NOTE]
+这里private final Deque<CallAdvisor> callAdvisors;是一个队列所以要pop取出下一个advisor
+
+我们可以发现下面这两行代码通过调用`adviseCall`获取响应然后设置到上下文中，而这个`adviosr`就是`Calladviosr`类型的。这也就达到了一个个advisor接续执行的效果
+
+~~~java
+ChatClientResponse chatClientResponse = advisor.adviseCall(chatClientRequest, this);
+observationContext.setChatClientResponse(chatClientResponse);
+~~~
+
+在`adviseCall`中，继承`Calldvisor`会重写此方法并加入此advisor所需要实现的功能：<br>
+`BaseAdvisor`继承后：
+
+~~~java
+default ChatClientResponse adviseCall(ChatClientRequest chatClientRequest, CallAdvisorChain callAdvisorChain) {
+        Assert.notNull(chatClientRequest, "chatClientRequest cannot be null");
+        Assert.notNull(callAdvisorChain, "callAdvisorChain cannot be null");
+        ChatClientRequest processedChatClientRequest = this.before(chatClientRequest, callAdvisorChain);
+        ChatClientResponse chatClientResponse = callAdvisorChain.nextCall(processedChatClientRequest);
+        return this.after(chatClientResponse, callAdvisorChain);
+}
+~~~
+
+>[!NOTE]
+注意这里的before跟after方法类似AOP机制，具体的before跟after逻辑需要具体的advisor去重写此方法
+
+`SimpleLoggerAdvisor`直接实现`CallAdvisor`：
+
+~~~java
+ public ChatClientResponse adviseCall(ChatClientRequest chatClientRequest, CallAdvisorChain callAdvisorChain) {
+        this.logRequest(chatClientRequest);
+        ChatClientResponse chatClientResponse = callAdvisorChain.nextCall(chatClientRequest);
+        this.logResponse(chatClientResponse);
+        return chatClientResponse;
+    }
+~~~
+
+>[!NOTE]
+这里的`logRequest`,`logResponse`实现的效果就像是before跟after
+
+#### 流式：`StreamAdvisor` extends Advisor
+
+剩下的逻辑跟非流式是一致的，名称也类似
+
+~~~java
+ Flux<ChatClientResponse> adviseStream(ChatClientRequest chatClientRequest, StreamAdvisorChain streamAdvisorChain);
+~~~
+
+- 流式返回 `Flux<ChatClientResponse>`，适配大模型流式输出场景
+- `StreamAdvisorChain.nextStream(request)` 继续执行链路
+
+注意的是以上都是新版本（2.0+）的版本，旧版本有所差别
 
 ### 2.3 核心分支链接口
 
-#### `CallAroundAdvisorChain`
+![guanxi](5.png)最上面是顶层接口，最下面的统一实现call跟stream的方法<br>
+调用逻辑就是上面的逻辑：
+
+#### `CallAdvisorChain`
 
 ~~~java
-public interface CallAroundAdvisorChain {
+public interface CallAdvisorChain extends AdvisorChain {
+    ChatClientResponse nextCall(ChatClientRequest chatClientRequest);
 
- AdvisedResponse nextAroundCall(AdvisedRequest advisedRequest);
+    List<CallAdvisor> getCallAdvisors();
 
+    CallAdvisorChain copy(CallAdvisor after);
 }
+
 ~~~
 
-#### `StreamAroundAdvisorChain`
+#### `StreamAdvisorChain`
 
 ~~~java
-public interface CallAroundAdvisorChain {
+public interface StreamAdvisorChain extends AdvisorChain {
+    Flux<ChatClientResponse> nextStream(ChatClientRequest chatClientRequest);
 
- AdvisedResponse nextAroundCall(AdvisedRequest advisedRequest);
-
+    List<StreamAdvisor> getStreamAdvisors();
 }
+
 ~~~
 
 ### 2.4 数据模型类
@@ -105,20 +184,6 @@ public interface CallAroundAdvisorChain {
 
 ## 四、实现Advisor
 
-创建 `Advisor` 需实现 `CallAroundAdvisor` 或 `StreamAroundAdvisor`（或两者）。核心实现方法是：非流式用 `nextAroundCall()` ，流式用 `nextAroundStream()`。
+创建 `Advisor` 需实现 `CallAdvisor` 或 `StreamAdvisor`（或两者）。核心实现方法是：非流式用 `nextCall()` ，流式用 `nextStream()`。
 
 上下文修改的实例：
-
-~~~java
-@Override
-public AdvisedResponse aroundCall(AdvisedRequest advisedRequest, CallAroundAdvisorChain chain) {
-
-    this.advisedRequest = advisedRequest.updateContext(context -> {
-        context.put("aroundCallBefore" + getName(), "AROUND_CALL_BEFORE " + getName());  // Add multiple key-value pairs
-        context.put("lastBefore", getName());  // Add a single key-value pair
-        return context;
-    });
-
-    // Method implementation continues...
-}
-~~~
