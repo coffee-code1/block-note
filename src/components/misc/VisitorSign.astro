@@ -1,0 +1,203 @@
+---
+// 左上角悬挂的卡通告示牌：展示全站访问量（PV）与访客数（UV）。
+//
+// 数据原理：复用页脚 Vercount 的 span id。本组件在 DOM 中位于页脚之前，
+// Vercount 只更新第一个同 id 元素（即这里的两个 span），
+// 页脚那份由 Footer.astro 里的 mirrorDuplicateSpans() 镜像同步，无需额外脚本。
+//
+// 定位：absolute 相对文档（body 无 relative 祖先），钉在页面左上角，
+// 随页面滚动一起滚走，不会在阅读时遮挡左侧边栏。
+---
+
+<div
+	id="visitor-sign"
+	class="absolute top-0 left-4 md:left-8 z-30 hidden lg:block print:hidden select-none"
+	title="全站访问量 / 访客数（Vercount 统计）"
+>
+	<div class="sign-swing">
+		<!-- 两根挂绳，顶端没入视口上沿，营造「从天花板挂下来」的感觉 -->
+		<div class="sign-ropes">
+			<span class="rope rope-l"></span>
+			<span class="rope rope-r"></span>
+		</div>
+		<!-- 木板本体 -->
+		<div class="sign-board">
+			<span class="nail nail-l"></span>
+			<span class="nail nail-r"></span>
+			<div class="sign-title">📜 小站告示</div>
+			<div class="sign-row">
+				<span class="sign-label">🫎已被围观</span>
+				<span class="sign-value"><span id="vercount_value_site_pv" class="sign-num">--</span> 次</span>
+			</div>
+			<div class="sign-row">
+				<span class="sign-label">🐾 来过</span>
+				<span class="sign-value"><span id="vercount_value_site_uv" class="sign-num">--</span> 位朋友</span>
+			</div>
+		</div>
+	</div>
+</div>
+
+<style>
+	/* 以挂绳顶端为轴心轻轻摇晃 */
+	.sign-swing {
+		transform-origin: 50% 0;
+		animation: sign-sway 4.5s ease-in-out infinite;
+	}
+
+	@keyframes sign-sway {
+		0%,
+		100% {
+			transform: rotate(1.8deg);
+		}
+		50% {
+			transform: rotate(-1.8deg);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.sign-swing {
+			animation: none;
+		}
+	}
+
+	.sign-ropes {
+		position: relative;
+		height: 4.9rem; /* 绳子顶端没入视口上沿，板子恰好挂在导航栏下沿 */
+		width: 9rem;
+		margin: 0 auto;
+	}
+
+	.rope {
+		position: absolute;
+		top: -0.5rem;
+		width: 3px;
+		height: calc(100% + 0.5rem);
+		border-radius: 2px;
+		background: repeating-linear-gradient(
+			to bottom,
+			#8b5e34 0 4px,
+			#a8763e 4px 8px
+		);
+	}
+
+	.rope-l {
+		left: 1.35rem;
+		transform: rotate(3deg);
+	}
+
+	.rope-r {
+		right: 1.35rem;
+		transform: rotate(-3deg);
+	}
+
+	.sign-board {
+		position: relative;
+		width: 11.5rem;
+		padding: 0.6rem 0.9rem 0.7rem;
+		border-radius: 14px;
+		border: 3px solid #8b5e34;
+		background:
+			/* 木纹条纹 */
+			repeating-linear-gradient(
+				90deg,
+				rgba(139, 94, 52, 0.08) 0 2px,
+				transparent 2px 26px
+			),
+			linear-gradient(150deg, #f3cd96 0%, #e3ac69 55%, #d59a54 100%);
+		box-shadow:
+			0 5px 0 #6d4520,
+			0 10px 18px rgba(0, 0, 0, 0.22);
+		transition: transform 0.25s ease;
+	}
+
+	.sign-board:hover {
+		transform: scale(1.04) rotate(-1deg);
+	}
+
+	.nail {
+		position: absolute;
+		top: 5px;
+		width: 9px;
+		height: 9px;
+		border-radius: 9999px;
+		background: radial-gradient(circle at 35% 30%, #e8e8e8 0%, #8f8f8f 55%, #4f4f4f 100%);
+		box-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+	}
+
+	.nail-l {
+		left: 10px;
+	}
+
+	.nail-r {
+		right: 10px;
+	}
+
+	.sign-title {
+		text-align: center;
+		font-size: 0.8rem;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		color: #6b421c;
+		border-bottom: 2px dashed rgba(107, 66, 28, 0.45);
+		padding-bottom: 0.3rem;
+		margin-bottom: 0.4rem;
+	}
+
+	.sign-row {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
+		font-size: 0.78rem;
+		color: #6b421c;
+		line-height: 1.7;
+		white-space: nowrap;
+	}
+
+	.sign-value {
+		font-weight: 600;
+	}
+
+	.sign-num {
+		font-size: 0.95rem;
+		font-weight: 800;
+		color: #a03d12;
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* 暗色模式：换成深色木板 + 奶油色文字 */
+	:global(.dark) .sign-board {
+		border-color: #3a2413;
+		background:
+			repeating-linear-gradient(
+				90deg,
+				rgba(0, 0, 0, 0.12) 0 2px,
+				transparent 2px 26px
+			),
+			linear-gradient(150deg, #7c5a36 0%, #5f4225 55%, #4c3319 100%);
+		box-shadow:
+			0 5px 0 #2b1a0c,
+			0 10px 18px rgba(0, 0, 0, 0.45);
+	}
+
+	:global(.dark) .rope {
+		background: repeating-linear-gradient(
+			to bottom,
+			#5f4225 0 4px,
+			#7c5a36 4px 8px
+		);
+	}
+
+	:global(.dark) .sign-title {
+		color: #f3e2c7;
+		border-bottom-color: rgba(243, 226, 199, 0.35);
+	}
+
+	:global(.dark) .sign-row {
+		color: #f3e2c7;
+	}
+
+	:global(.dark) .sign-num {
+		color: #ffb26e;
+	}
+</style>
