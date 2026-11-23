@@ -7,11 +7,12 @@
 //
 // 定位：absolute 相对文档（body 无 relative 祖先），钉在页面左上角，
 // 随页面滚动一起滚走，不会在阅读时遮挡左侧边栏。
+// 手机端同样显示：整体缩小 + 绳子加长（见下方 media query）。
 ---
 
 <div
 	id="visitor-sign"
-	class="absolute top-0 left-4 md:left-8 z-30 hidden lg:block print:hidden select-none"
+	class="absolute top-0 left-4 md:left-8 z-30 print:hidden select-none"
 	title="全站访问量 / 访客数（Vercount 统计）"
 >
 	<div class="sign-swing">
@@ -88,6 +89,20 @@
 	.rope-r {
 		right: 1.35rem;
 		transform: rotate(-3deg);
+	}
+
+	/* 手机端（<lg）：以左上角为原点整体缩小，木板不至于占掉半个屏幕；
+	   绳子相应加长，让缩放后的木板仍恰好挂在导航栏（4.5rem 高、z-50）下沿，
+	   只露一小段绳头在毛玻璃外，看起来像从导航栏上挂下来的。 */
+	@media (max-width: 1023.9px) {
+		#visitor-sign {
+			transform: scale(0.72);
+			transform-origin: top left;
+		}
+
+		.sign-ropes {
+			height: 6.8rem; /* 0.72 缩放后 ≈ 78px，板子顶落在导航栏下沿 */
+		}
 	}
 
 	.sign-board {
