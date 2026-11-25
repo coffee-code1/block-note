@@ -2,7 +2,7 @@
 title: 算法刷题Day2
 published: 2026-11-23
 updated: 2026-11-23
-description: 长度最小的子数组
+description: 长度最小的子数组，螺旋矩阵
 image: ''
 tags: [螺旋矩阵模拟，双指针滑动窗口]
 category: 算法
