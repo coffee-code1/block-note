@@ -517,7 +517,7 @@ public class TemperatureTools {
 定义 AiService，绑定工具：
 ~~~java
 // 把工具类绑定进来
-@AiService(tools = TemperatureTools.class)
+@AiService(tools = "TemperatureTools")
 public interface ChatService {
     // 普通文本
     String chat(String prompt);
@@ -530,8 +530,8 @@ public interface ChatService {
 }
 
 ~~~
-1. 注解上 `tools = xxx.class`：**这个接口所有方法都能使用这批工具**（最常用）
-2. 方法上 `@ToolBox(TemperatureTools.class)`：**仅当前这个方法可以使用这批工具**，粒度更细
+1. 注解上 `tools = "xxx"`：**这个接口所有方法都能使用这批工具**（最常用）
+2. 方法上 `@Tool("TemperatureTools")`：**仅当前这个方法可以使用这批工具**，粒度更细
 注入调用即可：这里是全部方法都会使用tool
 ~~~java
 @Autowired
