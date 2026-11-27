@@ -242,3 +242,130 @@ public interface PDDAiService {
 >[!TIP]
 - 这里有两个问题一个是我们这里使用的是deepseek的r1模型，但是它并不知道调用的是哪个tool，换成千问的就可以了
 - 第二个问题就是systemMessage会污染，这里先调用newChat，在调用chatMemory会使得此方法也会输出结构化，我们需要输入用户提示词（ user message）的时候加上不输出JSON来覆盖
+
+# SpringAi实现
+我们同样将提示词放入文件中
+## yml文件
+~~~xml
+server:
+  port: 8081
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: spring-ai
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: deepseek-r1:7b
+          temperature: 0.7
+
+~~~
+## 聊天接口
+~~~java
+@RestController
+@RequestMapping("/springai")
+public class ChatController {
+
+    private ChatClient chatClient;
+
+    @Autowired
+    private ChatMemory chatMemory;
+
+    @Autowired
+    private ChatModel chatModel;
+
+    @Autowired
+    private OrderTools orderTools;
+
+    /** 从 classpath 加载系统提示词文件，注意不能直接写文件名当字符串 */
+    @Value("classpath:/system-text.st")
+    private Resource systemText;
+
+    @GetMapping("/newChat")
+    public OrderChat newChat(String orderId, String userId){
+        String chatId = UUID.randomUUID().toString();
+
+        return chatClient
+                .prompt()
+                .user(String.format("我要咨询订单相关的售后问题，我的用户id是%s,我的订单号是: %s ,本地的对话Id是 %s", userId, orderId, chatId))
+                .advisors(spec -> spec.param(CONVERSATION_ID, chatId)
+                        .param("chat_memory_retrieve_size", 100))
+                .call().entity(OrderChat.class);
+    }
+
+
+    /**
+     * 流式对话：GET /springai/chat?chatId=xxx&question=你好
+     * produces 里必须显式带上 charset=UTF-8，否则浏览器按 ISO-8859-1 解码会出现乱码
+     */
+    @GetMapping(value = "/chat", produces = "text/plain;charset=UTF-8")
+    public Flux<String>chat(String chatId, String question) {
+        return chatClient
+                .prompt()
+                .user(question)
+                .tools(orderTools)
+                .advisors(spec -> spec.param(CONVERSATION_ID,chatId)
+                        .param("chat_memory_retrieve_size", 100))
+                .stream()
+                .content();
+    }
+
+    @PostConstruct
+    public void init(){
+        chatClient = ChatClient
+                .builder(chatModel)
+                .defaultSystem(systemText)
+                .defaultAdvisors(new SimpleLoggerAdvisor()
+                        , MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .build();
+    }
+}
+~~~
+自定义的类：
+~~~java
+public record OrderChat(@JsonPropertyDescription("订单号") String orderId
+        , @JsonPropertyDescription("用户Id") String userId
+        , @JsonPropertyDescription("对话Id") String chatId) {
+
+}
+~~~
+## 工具调用
+~~~java
+@Service
+public class OrderManageService {
+
+    public String getOrderById(String orderId) {
+        return "订单号：" + orderId;
+    }
+
+    public String refund(String orderId, String reason) {
+        System.out.println("退款成功");
+        return UUID.randomUUID().toString();
+    }
+}
+~~~
+~~~java
+@Component
+public class OrderTools {
+
+    @Autowired
+    private OrderManageService orderManageService;
+
+    @Tool(name = "apply_refund", description = "根据用户传入的订单信息发起退款")
+    public String refund(@ToolParam(description = "订单编号，为数字类型") String orderId, @ToolParam(description = "商品名称") String name, @ToolParam(description = "退款原因") String reason) {
+        System.out.println("已为商品:" + name + ",订单号:" + orderId + "申请退款 , 退款原因： " + reason);
+
+        orderManageService.refund(orderId, reason);
+
+        return "已为商品：" + name + ",订单号：" + orderId + "申请退款 , 退款原因： " + reason;
+    }
+}
+~~~
+这里的ds模型也是无法进行工具调用的
